@@ -1,0 +1,58 @@
+# Dependencies & build outputs
+node_modules
+dist
+out
+build
+
+# Version control & GitHub configuration
+.git
+.gitignore
+.github
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments & bytecode (built in container)
+venv
+.venv
+env
+__pycache__
+*.pyc
+
+# Test suites, coverage & benchmarks
+coverage
+.vitest
+tests
+
+# Runtime data, storage & caches
+.orion
+data/
+downloads/
+torrents/
+*.sqlite
+*.sqlite3
+*.db
+dump.rdb
+*.rdb
+
+# Documentation & repo assets
+docs
+*.md
+!README.md
+
+# IDE configurations & OS files
+.idea/
+.vscode/
+*.suo
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Logs & diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#050505">
+    <title>Orion</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Orion">
+    <link rel="apple-touch-icon" href="/assets/images/orion.jpg">
+    <link rel="icon" type="image/png" href="/assets/images/orion.png">
+    <link rel="shortcut icon" href="/assets/images/orion.png" type="image/png">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+    <div id="app-loader">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="main-content">
+        <nav id="top-navbar">
+            <div class="nav-left">
+                <img src="assets/images/orion-nobackground.png" class="orion-logo-o" id="app-reload-btn" alt="Orion">
+            </div>
+            <div class="nav-center">
+                <div class="nav-item" id="nav-search" tabindex="0"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <div class="nav-item active" id="nav-movies" tabindex="0">Movies</div>
+                <div class="nav-item" id="nav-shows" tabindex="0">Shows</div>
+            </div>
+            <div class="nav-right"></div>
+        </nav>
+
+        <div id="search-page" style="display: none;">
+            <div class="search-hero">
+                <div class="search-box-container">
+                    <input type="text" id="big-search-input" placeholder="Search for a movie or show...">
+                    <button id="big-search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+                </div>
+                <div class="search-filter-container" id="search-filter-container" style="display: none;">
+                    <div class="search-filter-pill active" id="search-filter-movies" data-filter="movie" tabindex="0">Movies</div>
+                    <div class="search-filter-pill" id="search-filter-shows" data-filter="series" tabindex="0">Shows</div>
+                </div>
+            </div>
+            <div id="search-results-container">
+                <div id="search-loader" class="search-page-loader" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+                <div class="search-results-grid" id="search-results-grid"></div>
+            </div>
+        </div>
+
+        <div id="browse-page">
+            <div class="hero-container" id="hero-section" tabindex="0">
+                <div class="hero-title" id="hero-title"></div>
+                <div class="metadata hero-metadata" id="hero-metadata"></div>
+                <div class="hero-description" id="hero-description"></div>
+                <div class="hero-bottom-layout">
+                    <div class="hero-buttons">
+                        <button class="btn btn-play hero-btn-play" id="hero-play-btn">Play</button>
+                    </div>
+                </div>
+            </div>
+
+            <main class="row-container" id="main-rows">
+                <div id="continue-watching-section" style="display: none;">
+                    <div class="row-title">Continue Watching</div>
+                    <div class="cards-wrapper" id="continue-watching-container"></div>
+                    <div class="focused-info empty" id="continue-watching-info">
+                        <div class="metadata"></div>
+                        <div class="description"></div>
+                    </div>
+                </div>
+
+                <div class="row-title">Popular Movies</div>
+                <div class="cards-wrapper" id="popular-movies-container"></div>
+                <div class="focused-info empty" id="popular-movies-info">
+                    <div class="metadata"></div>
+                    <div class="description"></div>
+                </div>
+            </main>
+        </div>
+
+        <div id="show-details-page" style="display: none;">
+            <div id="show-details-loader" class="loader-container">
+                <div class="spinner"></div>
+            </div>
+            <div class="show-details-container" style="display: none;">
+                <div class="show-details-content">
+                    <div class="show-details-left">
+                        <button id="show-details-back-btn" class="back-btn-details">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <div class="show-details-header">
+                            <div class="show-logo-container" id="show-detail-logo"></div>
+                            <div class="show-meta-info">
+                                <span id="show-detail-year"></span>
+                                <span class="dot">•</span>
+                                <span id="show-detail-seasons-count"></span>
+                            </div>
+                        </div>
+                        <div id="seasons-list" class="seasons-list"></div>
+                    </div>
+                    
+                    <div class="show-details-right">
+                        <div class="episodes-carousel-wrapper">
+                            <div class="episodes-carousel" id="episodes-carousel">
+                                <!-- Episode rows will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="video-overlay">
+        <div class="video-container">
+            <video id="video-player" autoplay playsinline webkit-playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
+            <div id="subtitles-container" class="subtitles-overlay"></div>
+            
+            <div class="video-center-controls">
+                <button class="center-ctrl-btn" id="center-rewind-btn">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button class="center-ctrl-btn" id="center-play-pause-btn">
+                    <i id="center-play-icon" class="fa-solid fa-play" style="display:none;"></i>
+                    <i id="center-pause-icon" class="fa-solid fa-pause"></i>
+                </button>
+                <button class="center-ctrl-btn" id="center-forward-btn">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+            
+            <div id="video-loader" class="loader-container">
+                <!-- State 1: Downloading/Processing -->
+
+                <!-- State 2: Buffering/Transcoding Spinner -->
+                <div id="buffering-spinner-wrapper" class="spinner-wrapper" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="video-top-bar">
+                <button id="back-btn" class="back-arrow">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div id="video-movie-title">Movie Title</div>
+            </div>
+
+            <div id="video-controls">
+                <div class="control-row-top">
+                    <div id="timeline-container" tabindex="0">
+                        <div id="timeline-bg"></div>
+                        <div id="timeline-buffered"></div>
+                        <div id="timeline-progress"></div>
+                        <div id="timeline-handle"></div>
+                    </div>
+                </div>
+                <div class="control-row-bottom">
+                    <div class="controls-left">
+                        <button class="ctrl-btn" id="play-pause-btn">
+                            <i id="play-icon" class="fa-solid fa-play" style="display:none;"></i>
+                            <i id="pause-icon" class="fa-solid fa-pause"></i>
+                        </button>
+                        <button class="ctrl-btn" id="rewind-btn">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button class="ctrl-btn" id="forward-btn">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        
+                        <button class="ctrl-btn" id="next-episode-btn" style="display: none;">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                        
+
+
+                        <span id="video-time">0:00 / 0:00</span>
+                    </div>
+                    <div class="controls-right">
+                        <div class="menu-container subtitles-container">
+                            <div id="subtitles-dropdown" class="hover-menu dropdown-menu"></div>
+                            <button class="ctrl-btn" id="subtitles-btn">
+                                <i class="fa-solid fa-closed-captioning"></i>
+                            </button>
+                        </div>
+
+                        <button class="ctrl-btn" id="fullscreen-btn">
+                            <i id="fullscreen-icon" class="fa-solid fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-detail-sheet" class="bottom-sheet">
+        <div class="bottom-sheet-overlay" id="sheet-overlay"></div>
+        <div class="bottom-sheet-content" id="sheet-content">
+            <div class="bottom-sheet-banner" id="sheet-banner">
+                <div class="bottom-sheet-drag-handle"></div>
+                <button class="bottom-sheet-close-btn" id="sheet-close-btn">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="bottom-sheet-body">
+                <div class="bottom-sheet-title-row">
+                    <div class="bottom-sheet-title" id="sheet-title"></div>
+                </div>
+                <div class="bottom-sheet-meta" id="sheet-meta"></div>
+                <div class="bottom-sheet-buttons">
+                    <button class="btn btn-play" id="sheet-play-btn"><i class="fa-solid fa-play"></i> <span class="btn-text">Play</span></button>
+                    <button class="btn btn-download-action" id="sheet-download-btn"><i class="fa-solid fa-circle-down"></i> <span class="btn-text">Download</span></button>
+                </div>
+                <div class="bottom-sheet-description" id="sheet-description"></div>
+                <div class="bottom-sheet-extra-action" id="sheet-extra-action-container">
+                    <button class="btn btn-more-info" id="sheet-more-info-btn">Episodes & More Info</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="/src/renderer/App.js"></script>
+</body>
+</html>

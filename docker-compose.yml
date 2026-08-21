@@ -1,0 +1,41 @@
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: orion-redis
+    <<: *default-logging
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  app:
+    build: .
+    container_name: orion-app
+    <<: *default-logging
+    restart: unless-stopped
+    command: npm run start:all
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    volumes:
+      - orion_data:/root/.orion
+    depends_on:
+      - redis
+
+volumes:
+  orion_data:
+    name: orion_data
+  redis_data:
+    name: redis_data

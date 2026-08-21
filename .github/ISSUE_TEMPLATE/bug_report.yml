@@ -1,0 +1,95 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the sections below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+      placeholder: Describe the bug clearly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      options:
+        - Frontend / PWA
+        - API Server
+        - Download Worker
+        - Transcode Worker
+        - Subtitle Worker
+        - Playback / HLS Streaming
+        - Storage / Eviction
+        - Docker / Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Method
+      options:
+        - Docker Compose
+        - Local Development (npm run dev:all)
+        - Local (separate API + workers)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, OS, browser, etc.
+      placeholder: |
+        - OS: macOS 15 / Ubuntu 24.04 / etc.
+        - Node.js: v22.x
+        - Browser: Chrome 130 / Safari 18 / etc.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server / Worker Logs
+      description: |
+        Paste relevant server and worker logs. Please redact any private URLs or API keys before submitting.
+        - **Docker**: Run `docker compose logs --tail=100`
+        - **Local Dev**: Copy terminal output from `npm run dev:all`
+      placeholder: |
+        # Paste backend / worker / docker logs here
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: browser_logs
+    attributes:
+      label: Browser Console Output (if applicable)
+      description: For frontend or streaming issues, open DevTools (F12) -> Console and paste any red error messages.
+      placeholder: |
+        # Paste browser console errors here
+      render: shell
+    validations:
+      required: false
