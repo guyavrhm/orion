@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -176,26 +176,46 @@ export function App() {
     }
   };
 
+  // Smart Scroll Restoration for Explore / Detail navigation
+  const exploreScrollYRef = useRef<number>(0);
+
+  const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata | null) => {
+    if (media && !selectedMedia) {
+      // Save current explore view scroll position before entering detail view
+      exploreScrollYRef.current = window.scrollY;
+    }
+    setSelectedMedia(media);
+  }, [selectedMedia]);
+
+  // Restore explore scroll position when returning to home view
+  useEffect(() => {
+    if (!selectedMedia) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
+      });
+    }
+  }, [selectedMedia]);
+
   // Keyboard Shortcuts (Escape to close details modal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selectedMedia) setSelectedMedia(null);
+        if (selectedMedia) handleSelectMedia(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedMedia]);
+  }, [selectedMedia, handleSelectMedia]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
       {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}
       <HeaderPill
-        onSelectMedia={setSelectedMedia}
+        onSelectMedia={handleSelectMedia}
         readyMap={readyMap}
         activeRequests={activeRequests}
-        onBack={selectedMedia ? () => setSelectedMedia(null) : undefined}
+        onBack={selectedMedia ? () => handleSelectMedia(null) : undefined}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
@@ -211,7 +231,7 @@ export function App() {
             progressMap={progressMap}
             readyMap={readyMap}
             activeRequests={activeRequests}
-            onBack={() => setSelectedMedia(null)}
+            onBack={() => handleSelectMedia(null)}
             onPlayMedia={setPlayingMedia}
             onRequestMedia={handleRequestMedia}
           />
@@ -224,7 +244,7 @@ export function App() {
               progressMap={progressMap}
               readyMap={readyMap}
               activeRequests={activeRequests}
-              onSelectMedia={setSelectedMedia}
+              onSelectMedia={handleSelectMedia}
               onPlayDirect={setPlayingMedia}
             />
           </div>
