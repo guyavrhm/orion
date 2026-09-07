@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Tv, Play, Check, Star } from 'lucide-react';
+import { Tv, Play, Check, Star, ChevronDown } from 'lucide-react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -34,10 +34,13 @@ export function MediaDetailView({
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
+  const [useDropdown, setUseDropdown] = useState(false);
   const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(null);
   const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
   const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
   const activeEpisodeCardRef = useRef<HTMLDivElement | null>(null);
+  const headerRowRef = useRef<HTMLDivElement | null>(null);
   const hasScrolledRef = useRef(false);
 
   // Scroll to top on mount / media change
@@ -115,6 +118,32 @@ export function MediaDetailView({
   const episodes = showMeta?.episodes || [];
   const seasons = Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
   const currentSeasonEpisodes = episodes.filter((e) => e.season === selectedSeason);
+
+  // Dynamic layout measurement: detect if season pills fit on the single header line
+  useEffect(() => {
+    if (seasons.length <= 1) {
+      setUseDropdown(false);
+      return;
+    }
+
+    const checkFit = () => {
+      const headerEl = headerRowRef.current;
+      if (!headerEl) return;
+      // Space available in the header row after the "Episodes" title & gap
+      const availableWidth = headerEl.clientWidth - 170;
+      // Required width for full segmented pill tabs: each tab ~88px + 6px gap + 8px container padding
+      const neededWidth = seasons.length * 88 + 16;
+      setUseDropdown(neededWidth > availableWidth);
+    };
+
+    checkFit();
+
+    if (typeof ResizeObserver !== 'undefined' && headerRowRef.current) {
+      const observer = new ResizeObserver(checkFit);
+      observer.observe(headerRowRef.current);
+      return () => observer.disconnect();
+    }
+  }, [seasons.length]);
 
   const mergedProgressMap = { ...progressMap, ...localProgress };
   const mergedReadyMap = { ...readyMap, ...localReady };
@@ -278,33 +307,81 @@ export function MediaDetailView({
         {/* 3. TV Show Episode Browser */}
         {!isMovie && (
           <section className="space-y-6 pt-4 border-t border-zinc-800/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            {/* Single-row header: Always strictly on the same line */}
+            <div ref={headerRowRef} className="flex items-center justify-between gap-3 min-w-0">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2 flex-shrink-0">
                 <Tv className="w-5 h-5 text-red-400" />
                 <span>Episodes</span>
               </h3>
 
-              {/* Season Selector Tabs */}
+              {/* Dynamic Season Selector: Dropdown if pills don't fit, Segmented Tabs if they fit */}
               {seasons.length > 1 && (
-                <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto scrollbar-none">
-                  {seasons.map((s) => (
+                useDropdown ? (
+                  <div className="relative flex-shrink-0">
                     <button
-                      key={s}
                       type="button"
-                      onClick={() => {
-                        setSelectedSeason(s);
-                        setTargetEpisodeNumber(null);
-                      }}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                        selectedSeason === s
-                          ? 'bg-red-600 text-white shadow-md'
-                          : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                      }`}
+                      onClick={() => setShowSeasonDropdown((prev) => !prev)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-2xl glass-panel bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-white transition backdrop-blur-md cursor-pointer"
                     >
-                      Season {s}
+                      <span>Season {selectedSeason}</span>
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                          showSeasonDropdown ? 'rotate-180' : ''
+                        }`}
+                      />
                     </button>
-                  ))}
-                </div>
+
+                    {showSeasonDropdown && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={() => setShowSeasonDropdown(false)}
+                        />
+                        <div className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl p-1.5 shadow-2xl border border-white/10 max-h-64 overflow-y-auto">
+                          {seasons.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                setSelectedSeason(s);
+                                setTargetEpisodeNumber(null);
+                                setShowSeasonDropdown(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                selectedSeason === s
+                                  ? 'bg-red-600 text-white'
+                                  : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span>Season {s}</span>
+                              {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto scrollbar-none flex-shrink-0">
+                    {seasons.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSeason(s);
+                          setTargetEpisodeNumber(null);
+                        }}
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                          selectedSeason === s
+                            ? 'bg-red-600 text-white shadow-md'
+                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        }`}
+                      >
+                        Season {s}
+                      </button>
+                    ))}
+                  </div>
+                )
               )}
             </div>
 

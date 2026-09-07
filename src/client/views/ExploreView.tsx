@@ -1,10 +1,98 @@
-import React from 'react';
-import { Play, PlusCircle, RotateCcw, Film, Tv } from 'lucide-react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Play, PlusCircle, RotateCcw, Film, Tv } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Progress, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
 import { RatingBadge } from '../components/common/RatingBadge.js';
 import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
+
+interface MediaCarouselRowProps {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}
+
+function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = rowRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll, children]);
+
+  const handleScroll = (direction: 'left' | 'right') => {
+    const el = rowRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.75;
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <section className="space-y-4 group/carousel relative">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          {icon}
+          <span>{title}</span>
+        </h3>
+
+        {/* Small header navigation chevrons on hover */}
+        <div className="hidden sm:flex items-center gap-1.5 opacity-0 group-hover/carousel:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={() => handleScroll('left')}
+            disabled={!canScrollLeft}
+            className={`p-1.5 rounded-full border border-white/10 glass-panel bg-zinc-900/80 transition cursor-pointer ${
+              canScrollLeft ? 'text-white hover:bg-white/20' : 'text-zinc-600 opacity-30 cursor-not-allowed'
+            }`}
+            title="Scroll Left"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScroll('right')}
+            disabled={!canScrollRight}
+            className={`p-1.5 rounded-full border border-white/10 glass-panel bg-zinc-900/80 transition cursor-pointer ${
+              canScrollRight ? 'text-white hover:bg-white/20' : 'text-zinc-600 opacity-30 cursor-not-allowed'
+            }`}
+            title="Scroll Right"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative">
+        {/* Scroll Container */}
+        <div
+          ref={rowRef}
+          className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1 scroll-smooth"
+        >
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 interface ExploreViewProps {
   movies: MovieMetadata[];
@@ -177,141 +265,132 @@ export function ExploreView({
 
       {/* 2. Continue Watching Shelf */}
       {continueWatching.length > 0 && (
-        <section className="space-y-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <RotateCcw className="w-4 h-4 text-red-400" />
-            <span>Continue Watching</span>
-          </h3>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">
-            {continueWatching.map((item) => {
-              const isMovie = item.type === 'movie';
-              const isReady = isMediaReady(item);
-              const showEp = !isMovie && 'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0 ? item.episodes[0] : null;
-              const epId = showEp ? (showEp.id || `${item.id}_s${showEp.season}_e${showEp.episode}`) : null;
-              const progObj = isMovie
-                ? progressMap[item.id]
-                : (epId && progressMap[epId]) || Object.entries(progressMap).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || progressMap[item.id];
-              const percent = calculateProgressPercent(progObj);
+        <MediaCarouselRow
+          title="Continue Watching"
+          icon={<RotateCcw className="w-4 h-4 text-red-400" />}
+        >
+          {continueWatching.map((item) => {
+            const isMovie = item.type === 'movie';
+            const isReady = isMediaReady(item);
+            const showEp = !isMovie && 'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0 ? item.episodes[0] : null;
+            const epId = showEp ? (showEp.id || `${item.id}_s${showEp.season}_e${showEp.episode}`) : null;
+            const progObj = isMovie
+              ? progressMap[item.id]
+              : (epId && progressMap[epId]) || Object.entries(progressMap).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || progressMap[item.id];
+            const percent = calculateProgressPercent(progObj);
 
-              const showEpInfo = (() => {
-                if (isMovie) return null;
-                if (showEp && showEp.season && showEp.episode) {
-                  return { season: showEp.season, episode: showEp.episode };
+            const showEpInfo = (() => {
+              if (isMovie) return null;
+              if (showEp && showEp.season && showEp.episode) {
+                return { season: showEp.season, episode: showEp.episode };
+              }
+              const matchedKey = Object.keys(progressMap).find((k) => k.startsWith(`${item.id}_s`));
+              if (matchedKey) {
+                const parsed = parseDisplayFileId(matchedKey);
+                if (parsed.season && parsed.episode) {
+                  return { season: parsed.season, episode: parsed.episode };
                 }
-                const matchedKey = Object.keys(progressMap).find((k) => k.startsWith(`${item.id}_s`));
-                if (matchedKey) {
-                  const parsed = parseDisplayFileId(matchedKey);
-                  if (parsed.season && parsed.episode) {
-                    return { season: parsed.season, episode: parsed.episode };
+              }
+              return null;
+            })();
+
+            const subtitle = isMovie 
+              ? item.year 
+              : showEpInfo 
+                ? `S${showEpInfo.season} E${showEpInfo.episode}` 
+                : (item.year || 'Show');
+
+            return (
+              <MediaCard
+                key={`continue-${item.id}`}
+                className="w-36 sm:w-44 flex-shrink-0"
+                title={item.title}
+                poster={item.poster}
+                type={item.type}
+                year={item.year}
+                subtitle={subtitle}
+                isReady={isReady}
+                progressPercent={percent}
+                onClick={() => {
+                  if (isMovie && isReady) {
+                    onPlayDirect({
+                      fileId: item.id,
+                      mediaId: item.id,
+                      title: item.title,
+                      type: 'movie',
+                      poster: item.poster,
+                      background: item.background,
+                    });
+                  } else {
+                    onSelectMedia(item);
                   }
+                }}
+                onPlayDirect={
+                  isMovie && isReady
+                    ? () =>
+                        onPlayDirect({
+                          fileId: item.id,
+                          mediaId: item.id,
+                          title: item.title,
+                          type: 'movie',
+                          poster: item.poster,
+                          background: item.background,
+                        })
+                    : undefined
                 }
-                return null;
-              })();
-
-              const subtitle = isMovie 
-                ? item.year 
-                : showEpInfo 
-                  ? `S${showEpInfo.season} E${showEpInfo.episode}` 
-                  : (item.year || 'Show');
-
-              return (
-                <MediaCard
-                  key={`continue-${item.id}`}
-                  className="w-36 sm:w-44 flex-shrink-0"
-                  title={item.title}
-                  poster={item.poster}
-                  type={item.type}
-                  year={item.year}
-                  subtitle={subtitle}
-                  isReady={isReady}
-                  progressPercent={percent}
-                  onClick={() => {
-                    if (isMovie && isReady) {
-                      onPlayDirect({
-                        fileId: item.id,
-                        mediaId: item.id,
-                        title: item.title,
-                        type: 'movie',
-                        poster: item.poster,
-                        background: item.background,
-                      });
-                    } else {
-                      onSelectMedia(item);
-                    }
-                  }}
-                  onPlayDirect={
-                    isMovie && isReady
-                      ? () =>
-                          onPlayDirect({
-                            fileId: item.id,
-                            mediaId: item.id,
-                            title: item.title,
-                            type: 'movie',
-                            poster: item.poster,
-                            background: item.background,
-                          })
-                      : undefined
-                  }
-                />
-              );
-            })}
-          </div>
-        </section>
+              />
+            );
+          })}
+        </MediaCarouselRow>
       )}
 
       {/* 3. Horizontal Row of Popular Movies */}
-      <section className="space-y-4">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Film className="w-4 h-4 text-red-400" />
-          <span>Popular Movies</span>
-        </h3>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">
-          {otherMovies.map((m) => {
-            const isReady = isMediaReady(m);
-            const percent = calculateProgressPercent(progressMap[m.id]);
+      <MediaCarouselRow
+        title="Popular Movies"
+        icon={<Film className="w-4 h-4 text-red-400" />}
+      >
+        {otherMovies.map((m) => {
+          const isReady = isMediaReady(m);
+          const percent = calculateProgressPercent(progressMap[m.id]);
 
-            return (
-              <MediaCard
-                key={m.id}
-                className="w-36 sm:w-44 flex-shrink-0"
-                title={m.title}
-                poster={m.poster}
-                type={m.type}
-                year={m.year}
-                isReady={isReady}
-                progressPercent={percent}
-                onClick={() => onSelectMedia(m)}
-              />
-            );
-          })}
-        </div>
-      </section>
+          return (
+            <MediaCard
+              key={m.id}
+              className="w-36 sm:w-44 flex-shrink-0"
+              title={m.title}
+              poster={m.poster}
+              type={m.type}
+              year={m.year}
+              isReady={isReady}
+              progressPercent={percent}
+              onClick={() => onSelectMedia(m)}
+            />
+          );
+        })}
+      </MediaCarouselRow>
 
       {/* 4. Horizontal Row of Trending TV Shows */}
-      <section className="space-y-4">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Tv className="w-4 h-4 text-red-400" />
-          <span>Trending TV Shows</span>
-        </h3>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">
-          {otherShows.map((s) => {
-            const isReady = isMediaReady(s);
+      <MediaCarouselRow
+        title="Trending TV Shows"
+        icon={<Tv className="w-4 h-4 text-red-400" />}
+      >
+        {otherShows.map((s) => {
+          const isReady = isMediaReady(s);
 
-            return (
-              <MediaCard
-                key={s.id}
-                className="w-36 sm:w-44 flex-shrink-0"
-                title={s.title}
-                poster={s.poster}
-                type={s.type}
-                year={s.year}
-                isReady={isReady}
-                onClick={() => onSelectMedia(s)}
-              />
-            );
-          })}
-        </div>
-      </section>
+          return (
+            <MediaCard
+              key={s.id}
+              className="w-36 sm:w-44 flex-shrink-0"
+              title={s.title}
+              poster={s.poster}
+              type={s.type}
+              year={s.year}
+              isReady={isReady}
+              onClick={() => onSelectMedia(s)}
+            />
+          );
+        })}
+      </MediaCarouselRow>
     </div>
   );
 }
