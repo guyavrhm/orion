@@ -315,11 +315,12 @@ router.get('/api/continue-watching', (req: Request<unknown, MediaResponse<(Movie
 
 // 8. Progress update
 router.post('/api/media/:id/progress', (req: Request<MediaIdParam, SuccessResponse, ProgressUpdate>, res: Response<SuccessResponse>) => {
-  const fileId = req.params.id;
-  const parsed = parseFileId(fileId);
+  const rawId = req.params.id;
+  const parsed = parseFileId(rawId);
   if (!parsed) {
     throw new BadRequestError(ErrorCode.BAD_REQUEST, 'Invalid media id');
   }
+  const fileId = parsed.type === 'show' ? `${parsed.id}_s${parsed.season}_e${parsed.episode}` : parsed.id;
 
   const { timestamp, runtime } = req.body;
   progressRepo.saveProgress(fileId, { timestamp, runtime });
@@ -329,7 +330,12 @@ router.post('/api/media/:id/progress', (req: Request<MediaIdParam, SuccessRespon
 
 // 9. Play resolver URL and subtitles query
 router.get('/api/media/:id/stream', (req: Request<MediaIdParam, StreamResponse>, res: Response<StreamResponse>) => {
-  const fileId = req.params.id;
+  const rawId = req.params.id;
+  const parsed = parseFileId(rawId);
+  if (!parsed) {
+    throw new BadRequestError(ErrorCode.BAD_REQUEST, 'Invalid media id');
+  }
+  const fileId = parsed.type === 'show' ? `${parsed.id}_s${parsed.season}_e${parsed.episode}` : parsed.id;
   const dirs = getMediaDirs(fileId);
   const playlistPath = dirs ? path.join(dirs.hlsDir, 'index.m3u8') : '';
 
@@ -348,8 +354,8 @@ router.get('/api/media/:id/stream', (req: Request<MediaIdParam, StreamResponse>,
 
 // 10. Enqueue media request
 router.post('/api/media/:id/request', async (req: Request<MediaIdParam, UserMediaRequestResponse>, res: Response<UserMediaRequestResponse>) => {
-  const fileId = req.params.id;
-  const parsed = parseFileId(fileId);
+  const rawId = req.params.id;
+  const parsed = parseFileId(rawId);
   if (!parsed) {
     throw new BadRequestError(ErrorCode.BAD_REQUEST, 'Invalid media id');
   }
@@ -358,6 +364,7 @@ router.post('/api/media/:id/request', async (req: Request<MediaIdParam, UserMedi
   const isMovie = type === 'movie';
   const season = isMovie ? undefined : Number(parsed.season);
   const episode = isMovie ? undefined : Number(parsed.episode);
+  const fileId = isMovie ? parsed.id : `${parsed.id}_s${parsed.season}_e${parsed.episode}`;
   const dirs = getMediaDirs(fileId);
 
   // 1. Check if fully ready in SQLite

@@ -80,8 +80,17 @@ describe('utils/helpers', () => {
       expect(parseFileId({} as unknown as string)).toBeNull();
     });
 
-    it('should reject inputs containing illegal characters (spaces, colons, punctuation)', () => {
-      expect(parseFileId('tt1234:1:1')).toBeNull();
+    it('should parse colon-delimited episode file IDs gracefully', () => {
+      const result = parseFileId('tt1234:1:2');
+      expect(result).toEqual({
+        type: 'show',
+        id: 'tt1234',
+        season: '1',
+        episode: '2'
+      });
+    });
+
+    it('should reject inputs containing illegal characters (spaces, punctuation, injections)', () => {
       expect(parseFileId('tt1234 567')).toBeNull();
       expect(parseFileId('tt1234;rm -rf /')).toBeNull();
       expect(parseFileId('tt1234$evil')).toBeNull();

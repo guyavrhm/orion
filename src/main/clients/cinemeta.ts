@@ -83,7 +83,7 @@ export function normalizeRawShowMetadata(raw: Record<string, any>, fallbackId?: 
       const epTvdbId = v.tvdb_id != null ? parseInt(String(v.tvdb_id), 10) || null : null;
 
       return {
-        id: String(v.id || `${id}_s${seasonNum}_e${epNum}`),
+        id: `${id}_s${seasonNum}_e${epNum}`,
         show_id: id,
         season: seasonNum,
         episode: epNum,

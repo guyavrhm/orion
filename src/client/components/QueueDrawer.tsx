@@ -1,0 +1,170 @@
+import React from 'react';
+import { X, ListVideo, CheckCircle2, AlertTriangle, Loader2, Play, RefreshCw, Clock } from 'lucide-react';
+import type { UserActiveMediaState } from '../../main/types/index.js';
+import type { PlayingMediaInfo } from '../types/ui.js';
+import { parseDisplayFileId } from '../utils/formatters.js';
+
+interface QueueDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  activeRequests: Record<string, UserActiveMediaState>;
+  onRefresh: () => void;
+  onPlayMedia: (info: PlayingMediaInfo) => void;
+}
+
+export function QueueDrawer({
+  isOpen,
+  onClose,
+  activeRequests,
+  onRefresh,
+  onPlayMedia,
+}: QueueDrawerProps) {
+  if (!isOpen) return null;
+
+  const items = Object.values(activeRequests);
+
+  const getStatusBadge = (status: UserActiveMediaState['status']) => {
+    switch (status) {
+      case 'ready':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+            <CheckCircle2 className="w-3 h-3" /> Ready
+          </span>
+        );
+      case 'failed':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
+            <AlertTriangle className="w-3 h-3" /> Failed
+          </span>
+        );
+      case 'queued':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+            <Clock className="w-3 h-3" /> Queued
+          </span>
+        );
+      case 'preparing':
+      default:
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+            <Loader2 className="w-3 h-3 animate-spin" /> Preparing
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex justify-end"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md h-full glass-panel border-l border-zinc-800 p-6 flex flex-col animate-in slide-in-from-right duration-300"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400">
+              <ListVideo className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Active Requests</h2>
+              <p className="text-xs text-zinc-400">Live stream preparation</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer"
+              title="Refresh requests"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* List of active requests */}
+        <div className="flex-1 overflow-y-auto py-4 space-y-3">
+          {items.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-500 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-zinc-600">
+                <ListVideo className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-zinc-400">No active requests</p>
+              <p className="text-xs text-zinc-600 max-w-xs">
+                When you request a movie or show, the live streaming preparation progress will appear here.
+              </p>
+            </div>
+          ) : (
+            items.map((item) => {
+              const info = parseDisplayFileId(item.fileId);
+              const displayName = info.isEpisode
+                ? `${info.title} (${info.subtitle})`
+                : info.title;
+
+              return (
+                <div
+                  key={item.fileId}
+                  className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-white truncate block">
+                        {displayName}
+                      </span>
+                    </div>
+                    {getStatusBadge(item.status)}
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
+                      <span>Progress</span>
+                      <span className="text-indigo-300 font-bold">{item.progress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="bg-indigo-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(0, parseFloat(item.progress) || 0))}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* If ready, play button */}
+                  {item.status === 'ready' && (
+                    <button
+                      onClick={() => {
+                        onPlayMedia({
+                          fileId: item.fileId,
+                          mediaId: info.mediaId,
+                          title: info.title,
+                          subtitle: info.subtitle,
+                          season: info.season,
+                          episode: info.episode,
+                          type: info.isEpisode ? 'show' : 'movie',
+                        });
+                        onClose();
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Watch Now</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

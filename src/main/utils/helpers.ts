@@ -33,11 +33,19 @@ export interface MediaDirs {
  */
 export function parseFileId(fileId: string): ParsedFileId | null {
   if (!fileId || typeof fileId !== 'string') return null;
-  
-  if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
-    return null;
+
+  // Check for colon format: {id}:{season}:{episode}
+  const colonMatch = fileId.match(/^([a-zA-Z0-9_-]+):(\d+):(\d+)$/);
+  if (colonMatch) {
+    return {
+      type: 'show',
+      id: colonMatch[1],
+      season: colonMatch[2],
+      episode: colonMatch[3]
+    };
   }
 
+  // Check for standard canonical format: {id}_s{season}_e{episode}
   const match = fileId.match(/^([a-zA-Z0-9_-]+)_s(\d+)_e(\d+)$/);
   if (match) {
     return {
@@ -46,6 +54,10 @@ export function parseFileId(fileId: string): ParsedFileId | null {
       season: match[2],
       episode: match[3]
     };
+  }
+
+  if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+    return null;
   }
 
   return {
