@@ -21,15 +21,18 @@ export function SearchOverlay({
 }: SearchOverlayProps) {
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<(MovieMetadata | ShowMetadata)[]>([]);
+  const [searchResultsReady, setSearchResultsReady] = useState<Record<string, Stream>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Focus input on open
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setQuery('');
       setResults([]);
+      setSearchResultsReady({});
     }
   }, [isOpen]);
 
@@ -37,6 +40,7 @@ export function SearchOverlay({
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setSearchResultsReady({});
       setLoading(false);
       return;
     }
@@ -46,10 +50,12 @@ export function SearchOverlay({
       ApiClient.search(query)
         .then((res) => {
           setResults(res.metadata || []);
+          if (res.ready) setSearchResultsReady(res.ready);
           setLoading(false);
         })
         .catch(() => {
           setResults([]);
+          setSearchResultsReady({});
           setLoading(false);
         });
     }, 300);
@@ -101,7 +107,7 @@ export function SearchOverlay({
           {results.length > 0 ? (
             results.map((item) => {
               const isMovie = item.type === 'movie';
-              const isReady = !!readyMap[item.id] || activeRequests[item.id]?.status === 'ready';
+              const isReady = !!readyMap[item.id] || !!searchResultsReady[item.id] || activeRequests[item.id]?.status === 'ready';
 
               return (
                 <div

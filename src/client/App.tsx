@@ -11,6 +11,7 @@ import type {
 } from './types/ui.js';
 import { ApiClient } from './services/api.js';
 import { useSSE } from './hooks/useSSE.js';
+import { parseDisplayFileId } from './utils/formatters.js';
 
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
@@ -105,6 +106,26 @@ export function App() {
       },
     }));
 
+    // 2. Optimistically add to continue watching shelf and progress map
+    const parsed = parseDisplayFileId(fileId);
+    const mediaItem = selectedMedia || movies.find((m) => m.id === parsed.mediaId) || shows.find((s) => s.id === parsed.mediaId);
+    if (mediaItem) {
+      setContinueWatching((prev) => {
+        const filtered = prev.filter((item) => item.id !== mediaItem.id);
+        return [mediaItem, ...filtered];
+      });
+      setProgressMap((prev) => ({
+        ...prev,
+        [fileId]: prev[fileId] || {
+          fileId,
+          timestamp: 0,
+          progressPercent: 0,
+          duration: 0,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+    }
+
     try {
       const res = await ApiClient.requestMedia(fileId);
       if (res) {
@@ -118,7 +139,6 @@ export function App() {
           },
         }));
       }
-      await refreshQueue();
     } catch (err: unknown) {
       console.error(`Failed to request media ${fileId}:`, err);
       // Revert optimistic state upon failure
@@ -146,6 +166,18 @@ export function App() {
           updatedAt: new Date().toISOString(),
         },
       }));
+
+      // Keep the most recently watched title at the top of Continue Watching
+      const parsed = parseDisplayFileId(fileId);
+      const mediaId = parsed.mediaId;
+      setContinueWatching((prev) => {
+        const itemIdx = prev.findIndex((item) => item.id === mediaId);
+        if (itemIdx <= 0) return prev;
+        const item = prev[itemIdx];
+        const next = [...prev];
+        next.splice(itemIdx, 1);
+        return [item, ...next];
+      });
     } catch (err) {
       console.error(`Failed to update progress for ${fileId}:`, err);
     }
@@ -234,10 +266,7 @@ export function App() {
         <HlsPlayer
           media={playingMedia}
           initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
-          onClose={() => {
-            setPlayingMedia(null);
-            loadCatalogs(true);
-          }}
+          onClose={() => setPlayingMedia(null)}
           onProgressUpdate={handleProgressUpdate}
         />
       )}

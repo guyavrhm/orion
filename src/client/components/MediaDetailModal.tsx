@@ -36,18 +36,33 @@ export function MediaDetailModal({
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata | null>(media);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
+  const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
 
   useEffect(() => {
     if (!media) return;
     setDetailedMedia(media);
+    setLocalProgress({});
+    setLocalReady({});
 
     if (media.type === 'movie') {
-      ApiClient.getMovieDetails(media.id)
-        .then((res) => setDetailedMedia(res.metadata as MovieMetadata))
-        .catch(() => {});
+      // Only fetch details if basic fields are missing (e.g. from partial search stub)
+      if (!media.description && !media.cast?.length) {
+        ApiClient.getMovieDetails(media.id)
+          .then((res) => {
+            if (res.metadata) setDetailedMedia(res.metadata as MovieMetadata);
+            if (res.progress) setLocalProgress(res.progress);
+            if (res.ready) setLocalReady(res.ready);
+          })
+          .catch(() => {});
+      }
     } else {
       ApiClient.getShowDetails(media.id)
-        .then((res) => setDetailedMedia(res.metadata as ShowMetadata))
+        .then((res) => {
+          if (res.metadata) setDetailedMedia(res.metadata as ShowMetadata);
+          if (res.progress) setLocalProgress(res.progress);
+          if (res.ready) setLocalReady(res.ready);
+        })
         .catch(() => {});
     }
   }, [media]);
@@ -61,11 +76,14 @@ export function MediaDetailModal({
   const seasons = Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
   const currentSeasonEpisodes = episodes.filter((e) => e.season === selectedSeason);
 
+  const mergedProgressMap = { ...progressMap, ...localProgress };
+  const mergedReadyMap = { ...readyMap, ...localReady };
+
   // Movie stream & progress calculation
   const movieFileId = current.id;
-  const isMovieReady = isMovie && (!!readyMap[movieFileId] || activeRequests[movieFileId]?.status === 'ready');
+  const isMovieReady = isMovie && (!!mergedReadyMap[movieFileId] || activeRequests[movieFileId]?.status === 'ready');
   const movieReq = activeRequests[movieFileId];
-  const movieProg = progressMap[movieFileId];
+  const movieProg = mergedProgressMap[movieFileId];
   const moviePercent = calculateProgressPercent(movieProg);
 
   return (
@@ -225,9 +243,9 @@ export function MediaDetailModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {currentSeasonEpisodes.map((ep) => {
                 const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
-                const isEpReady = !!readyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
+                const isEpReady = !!mergedReadyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
                 const epReq = activeRequests[epFileId];
-                const epProg = progressMap[epFileId];
+                const epProg = mergedProgressMap[epFileId];
                 const epPercent = calculateProgressPercent(epProg);
 
                 return (

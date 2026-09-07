@@ -84,11 +84,8 @@ export function MediaCard({
         {title}
       </h4>
 
-      <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-0.5">
+      <div className="flex items-center text-[10px] text-zinc-400 mt-0.5">
         <span>{year || (isMovie ? 'Movie' : 'Show')}</span>
-        {progressPercent > 0 && (
-          <span className="font-mono text-indigo-400 font-semibold">{Math.round(progressPercent)}%</span>
-        )}
       </div>
     </div>
   );

@@ -220,23 +220,25 @@ export class ProgressRepo {
             metadataWithTimestamp.push({ meta: showMeta, last_updated: showRow.last_updated || latestEp.last_updated || 0 });
           }
 
-          progress[episodeId] = {
-            id: episodeId,
-            show_id: showRow.id,
-            timestamp: latestEp.timestamp || 0,
-            runtime: latestEp.runtime || 0,
-            last_updated: latestEp.last_updated || 0
-          };
-
-          const st = streamsRepo.getEpisodeStream(episodeId);
-          if (st) {
-            ready[episodeId] = {
-              id: st.id,
-              show_id: st.show_id,
-              quality: st.quality,
-              size_bytes: st.size_bytes,
-              ready_at: st.ready_at
+          for (const ep of epRows) {
+            progress[ep.id] = {
+              id: ep.id,
+              show_id: showRow.id,
+              timestamp: ep.timestamp || 0,
+              runtime: ep.runtime || 0,
+              last_updated: ep.last_updated || 0
             };
+
+            const st = streamsRepo.getEpisodeStream(ep.id);
+            if (st) {
+              ready[ep.id] = {
+                id: st.id,
+                show_id: st.show_id,
+                quality: st.quality,
+                size_bytes: st.size_bytes,
+                ready_at: st.ready_at
+              };
+            }
           }
         }
       }
