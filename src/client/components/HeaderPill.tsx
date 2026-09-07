@@ -207,7 +207,7 @@ export function HeaderPill({
         </header>
 
         {/* Dropdown Results Anchored to Pill */}
-        {isSearching && (query.trim().length > 0 || results.length > 0 || loading) && (
+        {isSearching && (results.length > 0 || (!loading && query.trim().length > 0)) && (
           <div className="mt-2 w-full glass-panel bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="max-h-[60vh] overflow-y-auto p-2.5 space-y-1">
               {results.length > 0 ? (
