@@ -79,7 +79,7 @@ export function SidebarNav({
           onClick={onToggleQueue}
           className={`relative p-3 rounded-2xl transition cursor-pointer ${
             activeCount > 0
-              ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40'
+              ? 'bg-zinc-800 text-indigo-400 border border-zinc-700'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
           }`}
           title="Requests"

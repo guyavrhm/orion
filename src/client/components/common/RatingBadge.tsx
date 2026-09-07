@@ -24,7 +24,7 @@ export function RatingBadge({ rating, size = 'sm', className = '' }: RatingBadge
 
   return (
     <span
-      className={`inline-flex items-center rounded-xl font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center rounded-xl font-bold bg-zinc-900 border border-zinc-800 text-amber-400 ${sizeClasses[size]} ${className}`}
     >
       <Star className={`${starSizes[size]} fill-amber-400 text-amber-400`} />
       <span>{rating}</span>

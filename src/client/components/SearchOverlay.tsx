@@ -139,8 +139,8 @@ export function SearchOverlay({
                         <span className="font-mono">{item.year || 'N/A'}</span>
                         <RatingBadge rating={item.rating} size="sm" />
                         {isReady && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" /> Ready
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Ready
                           </span>
                         )}
                       </div>

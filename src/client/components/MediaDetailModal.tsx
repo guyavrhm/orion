@@ -148,8 +148,8 @@ export function MediaDetailModal({
               </span>
             )}
             {movieProg && movieProg.timestamp > 0 && (
-              <span className="flex items-center gap-1 text-indigo-400 font-bold px-2.5 py-1 rounded-xl bg-indigo-500/10 border border-indigo-500/20 font-mono">
-                <RotateCcw className="w-3 h-3" />
+              <span className="flex items-center gap-1 text-indigo-400 font-bold px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 font-mono">
+                <RotateCcw className="w-3 h-3 text-indigo-400" />
                 {formatTime(movieProg.timestamp)} watched ({Math.round(moviePercent)}%)
               </span>
             )}

@@ -27,27 +27,27 @@ export function QueueDrawer({
     switch (status) {
       case 'ready':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-            <CheckCircle2 className="w-3 h-3" /> Ready
+          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Ready
           </span>
         );
       case 'failed':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20">
-            <AlertTriangle className="w-3 h-3" /> Failed
+          <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+            <AlertTriangle className="w-3 h-3 text-red-400" /> Failed
           </span>
         );
       case 'queued':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
-            <Clock className="w-3 h-3" /> Queued
+          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+            <Clock className="w-3 h-3 text-amber-400" /> Queued
           </span>
         );
       case 'preparing':
       default:
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
-            <Loader2 className="w-3 h-3 animate-spin" /> Preparing
+          <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
+            <Loader2 className="w-3 h-3 animate-spin text-indigo-400" /> Preparing
           </span>
         );
     }

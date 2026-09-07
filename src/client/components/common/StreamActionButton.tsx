@@ -43,7 +43,7 @@ export function StreamActionButton({
     const isQueued = activeRequest.status === 'queued';
     return (
       <div
-        className={`inline-flex items-center rounded-xl bg-indigo-950/70 border border-indigo-500/30 text-indigo-300 text-xs font-semibold ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-semibold ${sizeClasses[size]} ${className}`}
       >
         <Loader2 className={`${iconSizes[size]} animate-spin text-indigo-400`} />
         <span>{isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}</span>

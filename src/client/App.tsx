@@ -241,13 +241,7 @@ export function App() {
       {/* 7. Floating Toast Alerts */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-zinc-900/95 border shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200 ${
-            toast.type === 'success'
-              ? 'border-emerald-500/40 text-emerald-200'
-              : toast.type === 'info'
-              ? 'border-indigo-500/40 text-indigo-200'
-              : 'border-red-500/40 text-red-200'
-          }`}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-200 backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200"
         >
           {toast.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />

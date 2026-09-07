@@ -504,8 +504,8 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       {/* Error Message */}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 z-30 p-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4">
-            <AlertCircle className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-red-400 mb-4">
+            <AlertCircle className="w-8 h-8 text-red-400" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Playback Error</h2>
           <p className="text-zinc-400 max-w-md text-sm mb-6">{error}</p>
@@ -598,7 +598,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                         ApiClient.saveSubtitlePreference(media.mediaId, null);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition cursor-pointer ${
-                        !activeSubtitleLang ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30' : 'hover:bg-zinc-800/80 text-zinc-300'
+                        !activeSubtitleLang ? 'bg-zinc-800 text-white font-semibold' : 'hover:bg-zinc-800/80 text-zinc-300'
                       }`}
                     >
                       <span>Off</span>
@@ -613,7 +613,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                         }}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition cursor-pointer ${
                           activeSubtitleLang === sub.lang
-                            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
+                            ? 'bg-zinc-800 text-white font-semibold'
                             : 'hover:bg-zinc-800/80 text-zinc-300'
                         }`}
                       >
@@ -741,7 +741,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                             }}
                             className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                               activeAudioTrack === trk.id
-                                ? 'bg-indigo-600/30 text-indigo-300'
+                                ? 'bg-zinc-800 text-white font-semibold'
                                 : 'hover:bg-zinc-800 text-zinc-300'
                             }`}
                           >
