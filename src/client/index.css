@@ -13,6 +13,11 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    overflow-anchor: none;
+  }
+
+  html {
+    overflow-anchor: none;
   }
 }
 
