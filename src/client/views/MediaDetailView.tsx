@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Tv, Play, Check } from 'lucide-react';
+import { Tv, Play, Check, Star } from 'lucide-react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -9,7 +9,6 @@ import type {
 } from '../../main/types/index.js';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient } from '../services/api.js';
-import { RatingBadge } from '../components/common/RatingBadge.js';
 import { StreamActionButton } from '../components/common/StreamActionButton.js';
 import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
@@ -127,6 +126,51 @@ export function MediaDetailView({
   const movieProg = mergedProgressMap[movieFileId];
   const moviePercent = calculateProgressPercent(movieProg);
 
+  // Clean editorial metadata elements
+  const formattedRuntime =
+    isMovie && current.runtime
+      ? current.runtime >= 60
+        ? `${Math.floor(current.runtime / 60)}h${current.runtime % 60 > 0 ? ` ${current.runtime % 60}m` : ''}`
+        : `${current.runtime}m`
+      : null;
+
+  const seasonsCount =
+    !isMovie && seasons.length > 0
+      ? `${seasons.length} Season${seasons.length > 1 ? 's' : ''}`
+      : null;
+
+  const genresText =
+    current.genres && current.genres.length > 0
+      ? current.genres.join(', ')
+      : null;
+
+  const metaItems: React.ReactNode[] = [];
+  if (current.year) {
+    metaItems.push(<span key="year">{current.year}</span>);
+  }
+  if (formattedRuntime) {
+    metaItems.push(<span key="runtime">{formattedRuntime}</span>);
+  }
+  if (seasonsCount) {
+    metaItems.push(<span key="seasons">{seasonsCount}</span>);
+  }
+  if (current.rating) {
+    const ratingDisplay = typeof current.rating === 'number' ? current.rating.toFixed(1) : current.rating;
+    metaItems.push(
+      <span key="rating" className="inline-flex items-center gap-1 text-amber-400 font-semibold">
+        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 inline" />
+        <span>{ratingDisplay}</span>
+      </span>
+    );
+  }
+  if (genresText) {
+    metaItems.push(
+      <span key="genres" className="text-zinc-400">
+        {genresText}
+      </span>
+    );
+  }
+
   return (
     <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
       {/* 1. Full-Bleed Cinematic Hero Banner */}
@@ -157,42 +201,17 @@ export function MediaDetailView({
             </h1>
           )}
 
-          {/* Badges & Meta info */}
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-300 border border-white/10">
-              {isMovie ? 'Movie' : 'TV Show'}
-            </span>
-
-            {current.year && (
-              <span className="font-mono text-zinc-300 font-bold px-2.5 py-0.5 rounded-lg bg-zinc-900 border border-zinc-800">
-                {current.year}
-              </span>
-            )}
-
-            <RatingBadge rating={current.rating} size="sm" />
-
-            {isMovie && current.runtime && (
-              <span className="flex items-center gap-1 text-zinc-400 font-medium px-2.5 py-0.5 rounded-lg bg-zinc-900 border border-zinc-800">
-                <Clock className="w-3.5 h-3.5" />
-                {current.runtime}m
-              </span>
-            )}
-
-            {!isMovie && (
-              <span className="text-zinc-400 font-medium">
-                {episodes.length} Episodes {seasons.length > 0 ? `• ${seasons.length} Seasons` : ''}
-              </span>
-            )}
-
-            {current.genres?.map((g) => (
-              <span
-                key={g}
-                className="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-400 border border-zinc-800"
-              >
-                {g}
-              </span>
-            ))}
-          </div>
+          {/* Editorial Metadata Line */}
+          {metaItems.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-zinc-300 font-medium">
+              {metaItems.map((item, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && <span className="text-zinc-600 select-none">•</span>}
+                  {item}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
 
           {/* Movie Primary Play / Request Button (in Hero) */}
           {isMovie && (
