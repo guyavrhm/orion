@@ -30,11 +30,14 @@ export function normalizeRawMovieMetadata(raw: Record<string, any>, fallbackId?:
   const moviedb_id = raw.moviedb_id != null ? parseInt(String(raw.moviedb_id), 10) || null : null;
   const popularity = raw.popularity != null ? parseFloat(String(raw.popularity)) || null : null;
 
+  const rawYear = raw.year || raw.releaseInfo || (raw.released ? String(raw.released).slice(0, 4) : null);
+  const year = rawYear ? String(rawYear) : null;
+
   return {
     id,
     type: 'movie',
     title: String(raw.title || raw.name || ''),
-    year: raw.year ? String(raw.year) : null,
+    year,
     released: raw.released ? String(raw.released) : null,
     genres,
     poster: raw.poster ? String(raw.poster) : null,
@@ -97,11 +100,14 @@ export function normalizeRawShowMetadata(raw: Record<string, any>, fallbackId?: 
       };
     });
 
+  const rawYear = raw.year || raw.releaseInfo || (raw.released ? String(raw.released).slice(0, 4) : null);
+  const year = rawYear ? String(rawYear) : null;
+
   return {
     id,
     type: 'show',
     title: String(raw.title || raw.name || ''),
-    year: raw.year ? String(raw.year) : null,
+    year,
     released: raw.released ? String(raw.released) : null,
     genres,
     poster: raw.poster ? String(raw.poster) : null,

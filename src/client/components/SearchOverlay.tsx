@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Film, Tv, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Search, X, Film, Tv, Loader2, ArrowRight, Star, Check } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
-import { RatingBadge } from './common/RatingBadge.js';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -137,16 +136,21 @@ export function SearchOverlay({
                         <h4 className="text-sm font-bold text-white group-hover:text-indigo-300 transition truncate">
                           {item.title}
                         </h4>
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-white/5">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-white/5 flex-shrink-0">
                           {isMovie ? 'Movie' : 'Show'}
                         </span>
+                        {isReady && isMovie && (
+                          <span className="p-0.5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2.5 text-xs text-zinc-400 mt-1.5">
-                        <span className="font-mono">{item.year || 'N/A'}</span>
-                        <RatingBadge rating={item.rating} size="sm" />
-                        {isReady && isMovie && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Ready
+                        {item.year && <span className="font-mono">{item.year}</span>}
+                        {item.rating && (
+                          <span className="flex items-center gap-1 text-amber-400 font-semibold text-[11px]">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span>{item.rating}</span>
                           </span>
                         )}
                       </div>
