@@ -6,7 +6,6 @@ import type {
   Stream,
 } from '../main/types/index.js';
 import type {
-  NavigationTab,
   PlayingMediaInfo,
 } from './types/ui.js';
 import { ApiClient } from './services/api.js';
@@ -19,14 +18,11 @@ import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { ExploreView } from './views/ExploreView.js';
 
 // Core UI Components
-import { SidebarNav } from './components/SidebarNav.js';
+import { HeaderPill } from './components/HeaderPill.js';
 import { MediaDetailModal } from './components/MediaDetailModal.js';
-import { SearchOverlay } from './components/SearchOverlay.js';
 import { HlsPlayer } from './components/HlsPlayer.js';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<NavigationTab>('explore');
-
   // Catalogs & Playback Data State
   const [movies, setMovies] = useState<MovieMetadata[]>([]);
   const [shows, setShows] = useState<ShowMetadata[]>([]);
@@ -38,7 +34,6 @@ export function App() {
   // Modals & Overlays State
   const [selectedMedia, setSelectedMedia] = useState<MovieMetadata | ShowMetadata | null>(null);
   const [playingMedia, setPlayingMedia] = useState<PlayingMediaInfo | null>(null);
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
 
   // SSE Real-time Updates Hook
@@ -181,34 +176,29 @@ export function App() {
     }
   };
 
-  // Keyboard Shortcuts (Cmd+K / Ctrl+K for search, Escape to close)
+  // Keyboard Shortcuts (Escape to close details modal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
-      }
       if (e.key === 'Escape') {
-        if (isSearchOpen) setIsSearchOpen(false);
-        else if (selectedMedia) setSelectedMedia(null);
+        if (selectedMedia) setSelectedMedia(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, selectedMedia]);
+  }, [selectedMedia]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500 selection:text-white">
-      {/* 1. Vertical Side Rail Navigation */}
-      <SidebarNav
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onOpenSearch={() => setIsSearchOpen(true)}
+      {/* 1. Floating Top Glossy Header Pill with Search */}
+      <HeaderPill
+        onSelectMedia={setSelectedMedia}
+        readyMap={readyMap}
+        activeRequests={activeRequests}
       />
 
       {/* 2. Main Screen Area */}
-      <main className="flex-1 pl-16 sm:pl-20 transition-all">
+      <main className="flex-1 pt-16 sm:pt-20 transition-all">
         {loading ? (
           <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
             <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -239,16 +229,7 @@ export function App() {
         onRequestMedia={handleRequestMedia}
       />
 
-      {/* 4. Spotlight Search Overlay */}
-      <SearchOverlay
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        onSelectMedia={setSelectedMedia}
-        readyMap={readyMap}
-        activeRequests={activeRequests}
-      />
-
-      {/* 5. Custom Netflix-Grade HLS Video Player */}
+      {/* 4. Custom Netflix-Grade HLS Video Player */}
       {playingMedia && (
         <HlsPlayer
           media={playingMedia}
