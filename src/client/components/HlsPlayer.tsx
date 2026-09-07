@@ -64,16 +64,33 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   const initialTimestampRef = useRef<number>(initialTimestamp);
   const parsedCuesRef = useRef<SubtitleCue[]>([]);
 
-  // 1. Fetch Stream Info
+  // 1. Fetch Stream Info & Subtitle Preference
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
 
-    ApiClient.getStreamInfo(media.fileId)
-      .then((info) => {
+    Promise.all([
+      ApiClient.getStreamInfo(media.fileId),
+      ApiClient.getSubtitlePreference(media.mediaId).catch(() => ({ subtitle_lang: null })),
+    ])
+      .then(([info, prefRes]) => {
         if (!isMounted) return;
         setStreamInfo(info);
+
+        const savedPref = prefRes?.subtitle_lang;
+        if (savedPref === 'none') {
+          // Explicitly disabled by user
+          setActiveSubtitleLang(null);
+        } else if (savedPref) {
+          // Explicit language preference saved
+          setActiveSubtitleLang(savedPref);
+        } else if (info.subtitles && info.subtitles.length > 0) {
+          // Default to the first available subtitle track for new media
+          setActiveSubtitleLang(info.subtitles[0].lang);
+        } else {
+          setActiveSubtitleLang(null);
+        }
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -84,18 +101,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     return () => {
       isMounted = false;
     };
-  }, [media.fileId]);
-
-  // 2. Fetch subtitle preference
-  useEffect(() => {
-    ApiClient.getSubtitlePreference(media.mediaId)
-      .then((res) => {
-        if (res.subtitle_lang) {
-          setActiveSubtitleLang(res.subtitle_lang);
-        }
-      })
-      .catch(() => {});
-  }, [media.mediaId]);
+  }, [media.fileId, media.mediaId]);
 
   // 3. Initialize HLS
   useEffect(() => {
@@ -590,7 +596,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                         <button
                           onClick={() => {
                             setActiveSubtitleLang(null);
-                            ApiClient.saveSubtitlePreference(media.mediaId, null);
+                            ApiClient.saveSubtitlePreference(media.mediaId, 'none');
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                             !activeSubtitleLang
