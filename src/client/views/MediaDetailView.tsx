@@ -349,26 +349,28 @@ export function MediaDetailView({
                           className="fixed inset-0 z-30"
                           onClick={() => setShowSeasonDropdown(false)}
                         />
-                        <div className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl p-1.5 shadow-2xl border border-white/10 max-h-64 overflow-y-auto">
-                          {seasons.map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => {
-                                setSelectedSeason(s);
-                                setTargetEpisodeNumber(null);
-                                setShowSeasonDropdown(false);
-                              }}
-                              className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                selectedSeason === s
-                                  ? 'bg-red-600 text-white'
-                                  : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                              }`}
-                            >
-                              <span>Season {s}</span>
-                              {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
-                            </button>
-                          ))}
+                        <div className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
+                          <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
+                            {seasons.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSeason(s);
+                                  setTargetEpisodeNumber(null);
+                                  setShowSeasonDropdown(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                  selectedSeason === s
+                                    ? 'bg-red-600 text-white'
+                                    : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                                }`}
+                              >
+                                <span>Season {s}</span>
+                                {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </>
                     )}
