@@ -539,7 +539,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
       {/* Modern Netflix-Grade UI Controls Overlay */}
       <div
-        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between p-4 sm:p-8 transition-opacity duration-300 z-30 ${
+        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] sm:p-8 transition-opacity duration-300 z-30 ${
           showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >

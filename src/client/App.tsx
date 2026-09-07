@@ -246,7 +246,7 @@ export function App() {
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
       <main className="flex-1">
         {loading ? (
-          <div className="pt-16 sm:pt-20">
+          <div className="pt-[calc(env(safe-area-inset-top,0px)+4rem)] sm:pt-20">
             <ExploreSkeleton />
           </div>
         ) : selectedMedia ? (
@@ -262,7 +262,7 @@ export function App() {
             onCacheMediaDetails={handleCacheMediaDetails}
           />
         ) : (
-          <div className="pt-16 sm:pt-20">
+          <div className="pt-[calc(env(safe-area-inset-top,0px)+4rem)] sm:pt-20">
             <ExploreView
               movies={movies}
               shows={shows}

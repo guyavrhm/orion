@@ -261,20 +261,21 @@ export function MediaDetailView({
   return (
     <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
       {/* 1. Full-Bleed Cinematic Hero Banner */}
-      <div className="relative w-full h-[45vh] sm:h-[55vh] min-h-[380px] max-h-[580px] bg-zinc-950 overflow-hidden">
+      <div className="relative w-full h-[58vh] sm:h-[60vh] min-h-[460px] sm:min-h-[500px] max-h-[640px] bg-zinc-950 overflow-hidden">
         <ImageWithSkeleton
           src={current.background || current.poster}
           alt={current.title}
           priority={true}
-          className="w-full h-full object-cover object-center opacity-40 scale-105"
+          className="w-full h-full object-cover object-[center_20%] sm:object-center opacity-45 scale-105"
         />
 
-        {/* Ambient Gradients for smooth fade into page */}
+        {/* Ambient Gradients for smooth fade into page & pill readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/70 via-transparent to-transparent h-32" />
 
         {/* Hero Title & Primary Metadata Overlay */}
-        <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 z-10 max-w-5xl space-y-3">
+        <div className="absolute bottom-6 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 z-10 max-w-5xl space-y-3">
           {current.logo ? (
             <img
               src={current.logo}

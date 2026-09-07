@@ -131,7 +131,7 @@ export function HeaderPill({
       {/* Floating Header Pill Container (Uniform width & height in both states) */}
       <div
         ref={containerRef}
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
+        className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
       >
         <header
           className={`flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 ${
