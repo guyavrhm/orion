@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Tv, Play, Check, ArrowLeft, Star } from 'lucide-react';
+import { Clock, Tv, Play, Check } from 'lucide-react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -143,18 +143,6 @@ export function MediaDetailView({
         {/* Ambient Gradients for smooth fade into page */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/80 via-transparent to-transparent" />
-
-        {/* Floating Back Navigation Button */}
-        <div className="absolute top-6 left-4 sm:left-8 z-20">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 rounded-full glass-panel bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 text-xs font-bold transition-all shadow-xl cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-        </div>
 
         {/* Hero Title & Primary Metadata Overlay */}
         <div className="absolute bottom-6 left-4 sm:left-8 right-4 sm:right-8 z-10 max-w-5xl space-y-3">

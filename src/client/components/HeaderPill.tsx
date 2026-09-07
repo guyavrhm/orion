@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight } from 'lucide-react';
+import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
 
@@ -7,12 +7,14 @@ interface HeaderPillProps {
   onSelectMedia: (media: MovieMetadata | ShowMetadata) => void;
   readyMap: Record<string, Stream>;
   activeRequests: Record<string, UserActiveMediaState>;
+  onBack?: () => void;
 }
 
 export function HeaderPill({
   onSelectMedia,
   readyMap,
   activeRequests,
+  onBack,
 }: HeaderPillProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
@@ -72,13 +74,15 @@ export function HeaderPill({
       if (e.key === 'Escape') {
         if (isSearching) {
           setIsSearching(false);
+        } else if (onBack) {
+          onBack();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearching]);
+  }, [isSearching, onBack]);
 
   // Click Outside to Dismiss
   useEffect(() => {
@@ -95,10 +99,6 @@ export function HeaderPill({
   const handleSelect = (item: MovieMetadata | ShowMetadata) => {
     onSelectMedia(item);
     setIsSearching(false);
-  };
-
-  const handleLogoClick = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -156,44 +156,56 @@ export function HeaderPill({
                     setIsSearching(false);
                   }
                 }}
-                className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
                 title={query ? 'Clear' : 'Close (Esc)'}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            /* Clean Initial State: Icon on left, Search trigger on right */
+            /* Clean Initial State: Optional Back Button + Divider + Logo on left, Search on right */
             <>
-              {/* Left: Brand Icon */}
+              {/* Left: Dynamic Back button + Divider + Brand Icon */}
+              <div className="flex items-center gap-2.5">
+                {onBack && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBack();
+                      }}
+                      className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                      title="Back (Esc)"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <div className="w-px h-4 bg-zinc-800 flex-shrink-0" />
+                  </>
+                )}
+
+                <div className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none flex-shrink-0">
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <img
+                      src="/assets/images/orion-nobackground.png"
+                      alt="Orion"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span className="text-xs font-black tracking-wider text-white">
+                    ORION
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Search Icon Button */}
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLogoClick();
-                }}
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-white/5 transition flex-shrink-0 cursor-pointer"
-                title="Orion Home"
-              >
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <img
-                    src="/assets/images/orion-nobackground.png"
-                    alt="Orion"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <span className="text-xs font-black tracking-wider text-white">
-                  ORION
-                </span>
-              </button>
-
-              {/* Right: Search Icon */}
-              <div
-                className="flex items-center justify-center p-1.5 rounded-full text-zinc-400 hover:text-white transition"
+                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
                 title="Search"
               >
                 <Search className="w-4 h-4" />
-              </div>
+              </button>
             </>
           )}
         </header>
@@ -276,3 +288,5 @@ export function HeaderPill({
     </>
   );
 }
+
+export default HeaderPill;

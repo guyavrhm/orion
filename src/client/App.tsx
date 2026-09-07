@@ -190,11 +190,12 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500 selection:text-white">
-      {/* 1. Floating Top Glossy Header Pill with Search */}
+      {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}
       <HeaderPill
         onSelectMedia={setSelectedMedia}
         readyMap={readyMap}
         activeRequests={activeRequests}
+        onBack={selectedMedia ? () => setSelectedMedia(null) : undefined}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
