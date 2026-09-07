@@ -16,10 +16,10 @@ import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
 // Views & Pages
 import { ExploreView } from './views/ExploreView.js';
+import { MediaDetailView } from './views/MediaDetailView.js';
 
 // Core UI Components
 import { HeaderPill } from './components/HeaderPill.js';
-import { MediaDetailModal } from './components/MediaDetailModal.js';
 import { HlsPlayer } from './components/HlsPlayer.js';
 
 export function App() {
@@ -197,37 +197,38 @@ export function App() {
         activeRequests={activeRequests}
       />
 
-      {/* 2. Main Screen Area */}
-      <main className="flex-1 pt-16 sm:pt-20 transition-all">
+      {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
+      <main className="flex-1 transition-all">
         {loading ? (
-          <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+          <div className="min-h-[60vh] pt-28 flex flex-col items-center justify-center gap-4">
             <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-sm font-semibold tracking-wide text-zinc-400">Loading Orion Catalog...</span>
           </div>
-        ) : (
-          <ExploreView
-            movies={movies}
-            shows={shows}
-            continueWatching={continueWatching}
+        ) : selectedMedia ? (
+          <MediaDetailView
+            media={selectedMedia}
             progressMap={progressMap}
             readyMap={readyMap}
             activeRequests={activeRequests}
-            onSelectMedia={setSelectedMedia}
-            onPlayDirect={setPlayingMedia}
+            onBack={() => setSelectedMedia(null)}
+            onPlayMedia={setPlayingMedia}
+            onRequestMedia={handleRequestMedia}
           />
+        ) : (
+          <div className="pt-16 sm:pt-20">
+            <ExploreView
+              movies={movies}
+              shows={shows}
+              continueWatching={continueWatching}
+              progressMap={progressMap}
+              readyMap={readyMap}
+              activeRequests={activeRequests}
+              onSelectMedia={setSelectedMedia}
+              onPlayDirect={setPlayingMedia}
+            />
+          </div>
         )}
       </main>
-
-      {/* 3. Media Info & Description View */}
-      <MediaDetailModal
-        media={selectedMedia}
-        progressMap={progressMap}
-        readyMap={readyMap}
-        activeRequests={activeRequests}
-        onClose={() => setSelectedMedia(null)}
-        onPlayMedia={setPlayingMedia}
-        onRequestMedia={handleRequestMedia}
-      />
 
       {/* 4. Custom Netflix-Grade HLS Video Player */}
       {playingMedia && (
