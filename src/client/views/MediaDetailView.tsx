@@ -485,7 +485,7 @@ export function MediaDetailView({
                             fileId: epFileId,
                             mediaId: current.id,
                             title: current.title,
-                            subtitle: `S${ep.season}E${ep.episode} • ${ep.title}`,
+                            subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
                             type: 'show',
                             season: ep.season,
                             episode: ep.episode,
@@ -507,7 +507,7 @@ export function MediaDetailView({
                         fallback={
                           <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
                             <Tv className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-mono">EP {ep.episode}</span>
+                            <span className="text-[10px] font-bold tabular-nums">EP {ep.episode}</span>
                           </div>
                         }
                       />
@@ -556,7 +556,7 @@ export function MediaDetailView({
 
                     {/* Footer Row: Meta & Stream Action Button */}
                     <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
-                      <span className="text-[10px] text-zinc-400 font-mono">
+                      <span className="text-[10px] text-zinc-400 font-medium tabular-nums">
                         {ep.runtime ? `${ep.runtime}m` : `Season ${ep.season}`}
                       </span>
 
@@ -571,7 +571,7 @@ export function MediaDetailView({
                             fileId: epFileId,
                             mediaId: current.id,
                             title: current.title,
-                            subtitle: `S${ep.season}E${ep.episode} • ${ep.title}`,
+                            subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
                             type: 'show',
                             season: ep.season,
                             episode: ep.episode,

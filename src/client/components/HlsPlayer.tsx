@@ -759,7 +759,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                 />
               </div>
 
-              <div className="text-xs font-mono text-zinc-400 font-medium tracking-wider">
+              <div className="text-xs tabular-nums text-zinc-400 font-semibold tracking-wider">
                 <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
               </div>
             </div>

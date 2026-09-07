@@ -256,7 +256,7 @@ export function HeaderPill({
                           </div>
 
                           <div className="flex items-center gap-2.5 text-xs text-zinc-400 mt-1">
-                            {item.year && <span className="font-mono text-[11px]">{item.year}</span>}
+                            {item.year && <span className="tabular-nums text-[11px] font-medium">{item.year}</span>}
                             {item.rating && (
                               <span className="flex items-center gap-1 text-amber-400 font-semibold text-[11px]">
                                 <Star className="w-3 h-3 fill-amber-400 text-amber-400" />

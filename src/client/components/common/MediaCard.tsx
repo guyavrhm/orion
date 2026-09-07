@@ -51,7 +51,7 @@ export function MediaCard({
           fallback={
             <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
               {isMovie ? <Film className="w-8 h-8 mb-1" /> : <Tv className="w-8 h-8 mb-1" />}
-              <span className="text-[10px] uppercase font-mono">{isMovie ? 'Movie' : 'Show'}</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider">{isMovie ? 'Movie' : 'Show'}</span>
             </div>
           }
         />

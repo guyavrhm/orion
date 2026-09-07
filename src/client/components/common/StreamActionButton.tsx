@@ -50,7 +50,9 @@ export function StreamActionButton({
         ) : (
           <Loader2 className={`${iconSizes[size]} animate-spin text-red-400`} />
         )}
-        <span>{isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}</span>
+        <span className="tabular-nums">
+          {isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}
+        </span>
       </div>
     );
   }
