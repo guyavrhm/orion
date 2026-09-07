@@ -74,15 +74,13 @@ export function HeaderPill({
       if (e.key === 'Escape') {
         if (isSearching) {
           setIsSearching(false);
-        } else if (onBack) {
-          onBack();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearching, onBack]);
+  }, [isSearching]);
 
   // Click Outside to Dismiss
   useEffect(() => {

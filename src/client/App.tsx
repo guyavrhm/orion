@@ -194,18 +194,6 @@ export function App() {
     });
   }, []);
 
-  // Keyboard Shortcuts (Escape to go back)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (selectedMedia) handleBack();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedMedia, handleBack]);
-
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
       {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}

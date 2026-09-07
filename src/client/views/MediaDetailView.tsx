@@ -49,6 +49,18 @@ export function MediaDetailView({
     hasScrolledRef.current = false;
   }, [media.id]);
 
+  // Dismiss season dropdown on Escape
+  useEffect(() => {
+    if (!showSeasonDropdown) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSeasonDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSeasonDropdown]);
+
   useEffect(() => {
     setDetailedMedia(media);
     setLocalProgress({});
