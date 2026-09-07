@@ -2,7 +2,7 @@ import React from 'react';
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
-  variant?: 'pulse' | 'shimmer';
+  variant?: 'pulse' | 'shimmer' | 'none';
 }
 
 export function Skeleton({
@@ -13,6 +13,8 @@ export function Skeleton({
   const animationClass =
     variant === 'shimmer'
       ? 'animate-shimmer bg-zinc-900/80 border border-white/5'
+      : variant === 'none'
+      ? 'bg-zinc-800/50'
       : 'animate-pulse bg-zinc-800/50';
 
   return (

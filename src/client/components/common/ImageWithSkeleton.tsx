@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Skeleton } from './Skeleton.js';
 
 interface ImageWithSkeletonProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -20,39 +20,58 @@ export function ImageWithSkeleton({
 }: ImageWithSkeletonProps) {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Reset loading & error state when src changes
+  // Check if image is already cached/complete on mount or src change
   useEffect(() => {
-    setIsLoaded(false);
     setHasError(false);
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setIsLoaded(true);
+    } else {
+      setIsLoaded(false);
+    }
   }, [src]);
 
   if (!src || hasError) {
     return (
-      <div className={`relative w-full h-full flex items-center justify-center bg-zinc-900 ${containerClassName}`}>
-        {fallback || null}
+      <div className={`relative w-full h-full overflow-hidden flex items-center justify-center bg-zinc-900 ${containerClassName}`}>
+        <Skeleton
+          variant="none"
+          className={`absolute inset-0 w-full h-full rounded-[inherit] ${skeletonClassName}`}
+        />
+        {fallback && (
+          <div className="relative z-10 flex items-center justify-center w-full h-full">
+            {fallback}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${containerClassName}`}>
-      {/* Animated Skeleton Shimmer Placeholder */}
-      {!isLoaded && (
-        <Skeleton
-          className={`absolute inset-0 w-full h-full rounded-[inherit] ${skeletonClassName}`}
-        />
-      )}
+      {/* Background Skeleton Placeholder (visible while image is loading) */}
+      <Skeleton
+        variant="none"
+        className={`absolute inset-0 w-full h-full rounded-[inherit] ${skeletonClassName}`}
+      />
 
-      {/* Progressive Image with Smooth Fade-in */}
+      {/* Native Image: hidden (opacity-0) until loaded so default browser broken alt never renders */}
       <img
+        ref={(el) => {
+          imgRef.current = el;
+          if (el?.complete && el.naturalWidth > 0 && !isLoaded) {
+            setIsLoaded(true);
+          }
+        }}
         src={src}
         alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
         onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
-        className={`w-full h-full object-cover transition-opacity duration-300 ease-out ${
+        onError={() => {
+          setHasError(true);
+          setIsLoaded(false);
+        }}
+        className={`relative w-full h-full object-cover ${
           isLoaded ? 'opacity-100' : 'opacity-0'
         } ${className}`}
         {...props}
@@ -62,3 +81,4 @@ export function ImageWithSkeleton({
 }
 
 export default ImageWithSkeleton;
+
