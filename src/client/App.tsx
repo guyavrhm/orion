@@ -46,8 +46,8 @@ export function App() {
   const { activeRequests, refreshQueue, setActiveRequests } = useSSE();
 
   // Initial Catalogs Data Loading
-  const loadCatalogs = useCallback(async () => {
-    setLoading(true);
+  const loadCatalogs = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [moviesRes, showsRes, contRes] = await Promise.all([
         ApiClient.getMovies(20).catch(() => ({ metadata: [], progress: {}, ready: {} })),
@@ -59,21 +59,23 @@ export function App() {
       setShows(showsRes.metadata || []);
       setContinueWatching(contRes.metadata || []);
 
-      setProgressMap({
+      setProgressMap((prev) => ({
+        ...prev,
         ...(moviesRes.progress || {}),
         ...(showsRes.progress || {}),
         ...(contRes.progress || {}),
-      });
+      }));
 
-      setReadyMap({
+      setReadyMap((prev) => ({
+        ...prev,
         ...(moviesRes.ready || {}),
         ...(showsRes.ready || {}),
         ...(contRes.ready || {}),
-      });
+      }));
     } catch (err) {
       console.error('Failed to load initial catalogs:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -232,7 +234,10 @@ export function App() {
         <HlsPlayer
           media={playingMedia}
           initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
-          onClose={() => setPlayingMedia(null)}
+          onClose={() => {
+            setPlayingMedia(null);
+            loadCatalogs(true);
+          }}
           onProgressUpdate={handleProgressUpdate}
         />
       )}

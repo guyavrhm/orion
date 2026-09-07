@@ -279,18 +279,36 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     setCurrentSubtitleText(matched ? matched.text : '');
   };
 
-  // 6. Periodic progress sync to backend every 5 seconds
+  // 6. Progress sync helper (periodic and explicit on pause/exit)
+  const flushProgress = useCallback(() => {
+    const video = videoRef.current;
+    if (video && video.duration > 0) {
+      const curTime = Math.floor(video.currentTime);
+      const dur = Math.floor(video.duration);
+      ApiClient.saveProgress(media.fileId, curTime, dur).catch(() => {});
+      onProgressUpdate?.(media.fileId, curTime, dur);
+    }
+  }, [media.fileId, onProgressUpdate]);
+
+  const handleClose = useCallback(() => {
+    flushProgress();
+    onClose();
+  }, [flushProgress, onClose]);
+
+  // Periodic progress sync to backend every 5 seconds & on unmount
   useEffect(() => {
     const interval = setInterval(() => {
       const video = videoRef.current;
       if (video && !video.paused && video.duration > 0) {
-        ApiClient.saveProgress(media.fileId, Math.floor(video.currentTime), Math.floor(video.duration)).catch(() => {});
-        onProgressUpdate?.(media.fileId, Math.floor(video.currentTime), Math.floor(video.duration));
+        flushProgress();
       }
     }, 5000);
 
-    return () => clearInterval(interval);
-  }, [media.fileId, onProgressUpdate]);
+    return () => {
+      clearInterval(interval);
+      flushProgress();
+    };
+  }, [flushProgress]);
 
   // 7. Auto-hide Controls on Inactivity
   const triggerActivity = useCallback(() => {
@@ -316,9 +334,10 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     } else {
       video.pause();
       setIsPlaying(false);
+      flushProgress();
     }
     triggerActivity();
-  }, [triggerActivity]);
+  }, [flushProgress, triggerActivity]);
 
   const seek = useCallback(
     (seconds: number) => {
@@ -436,7 +455,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
             setShowSubtitleMenu(false);
             setShowSettingsMenu(false);
           } else {
-            onClose();
+            handleClose();
           }
           break;
       }
@@ -452,7 +471,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     streamInfo,
     showSubtitleMenu,
     showSettingsMenu,
-    onClose,
+    handleClose,
   ]);
 
   // Helper for subtitle font size classes
@@ -485,7 +504,10 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
         onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPause={() => {
+          setIsPlaying(false);
+          flushProgress();
+        }}
         onWaiting={() => setLoading(true)}
         onPlaying={() => setLoading(false)}
         onClick={togglePlay}
@@ -510,7 +532,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
           <h2 className="text-xl font-bold text-white mb-2">Playback Error</h2>
           <p className="text-zinc-400 max-w-md text-sm mb-6">{error}</p>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition cursor-pointer"
           >
             Back to Library
@@ -548,7 +570,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
               title="Close Player (Esc)"
             >

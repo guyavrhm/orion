@@ -156,23 +156,26 @@ export class ProgressRepo {
   /**
    * Gathers normalized Continue Watching metadata, progress, and ready lists.
    */
-  getContinueWatching(type: MediaType, limit = 10): {
+  getContinueWatching(type: MediaType | 'all' = 'all', limit = 10): {
     metadata: (MovieMetadata | ShowMetadata)[];
     progress: Record<string, Progress>;
     ready: Record<string, Stream>;
   } {
     try {
-      const metadata: (MovieMetadata | ShowMetadata)[] = [];
+      const metadataWithTimestamp: { meta: MovieMetadata | ShowMetadata; last_updated: number }[] = [];
       const progress: Record<string, Progress> = {};
       const ready: Record<string, Stream> = {};
 
-      if (type === 'movie') {
+      const fetchMovies = type === 'movie' || type === 'all';
+      const fetchShows = type === 'show' || type === 'all';
+
+      if (fetchMovies) {
         const rows = getContinueWatchingMoviesStmt.all(limit) as unknown as any[];
 
         for (const row of rows) {
           const meta = rebuildMovieMetadata(row);
           if (meta) {
-            metadata.push(meta);
+            metadataWithTimestamp.push({ meta, last_updated: row.last_updated || 0 });
           }
 
           progress[row.id] = {
@@ -194,7 +197,9 @@ export class ProgressRepo {
             };
           }
         }
-      } else {
+      }
+
+      if (fetchShows) {
         const showRows = getContinueWatchingShowsStmt.all(limit) as unknown as any[];
 
         for (const showRow of showRows) {
@@ -212,7 +217,7 @@ export class ProgressRepo {
           const epMeta = metadataRepo.getEpisodeMetadataSingle(showRow.id, season, episode);
           const showMeta = rebuildShowMetadata(showRow, epMeta ? [epMeta] : []);
           if (showMeta) {
-            metadata.push(showMeta);
+            metadataWithTimestamp.push({ meta: showMeta, last_updated: showRow.last_updated || latestEp.last_updated || 0 });
           }
 
           progress[episodeId] = {
@@ -235,6 +240,10 @@ export class ProgressRepo {
           }
         }
       }
+
+      metadataWithTimestamp.sort((a, b) => b.last_updated - a.last_updated);
+      const metadata = metadataWithTimestamp.slice(0, limit).map((x) => x.meta);
+
       return { metadata, progress, ready };
     } catch (e) {
       logger.error('Error fetching Continue Watching catalog lists', e);

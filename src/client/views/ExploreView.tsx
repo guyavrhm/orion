@@ -181,7 +181,12 @@ export function ExploreView({
             {continueWatching.map((item) => {
               const isMovie = item.type === 'movie';
               const isReady = isMediaReady(item);
-              const percent = calculateProgressPercent(progressMap[item.id]);
+              const showEp = !isMovie && 'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0 ? item.episodes[0] : null;
+              const epId = showEp ? (showEp.id || `${item.id}_s${showEp.season}_e${showEp.episode}`) : null;
+              const progObj = isMovie
+                ? progressMap[item.id]
+                : (epId && progressMap[epId]) || Object.entries(progressMap).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || progressMap[item.id];
+              const percent = calculateProgressPercent(progObj);
 
               return (
                 <MediaCard

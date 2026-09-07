@@ -46,8 +46,9 @@ export class ApiClient {
     return this.fetchJson<MediaResponse<ShowMetadata[]>>(`/api/shows?limit=${limit}`);
   }
 
-  static async getContinueWatching(limit = 10, type: 'movie' | 'show' = 'movie'): Promise<MediaResponse<(MovieMetadata | ShowMetadata)[]>> {
-    return this.fetchJson<MediaResponse<(MovieMetadata | ShowMetadata)[]>>(`/api/continue-watching?limit=${limit}&type=${type}`);
+  static async getContinueWatching(limit = 10, type?: 'movie' | 'show' | 'all'): Promise<MediaResponse<(MovieMetadata | ShowMetadata)[]>> {
+    const query = type && type !== 'all' ? `limit=${limit}&type=${type}` : `limit=${limit}`;
+    return this.fetchJson<MediaResponse<(MovieMetadata | ShowMetadata)[]>>(`/api/continue-watching?${query}`);
   }
 
   // 2. Details

@@ -390,6 +390,49 @@ describe('db/progress - ProgressRepo', () => {
       expect(cw.progress['show_1_s1_e2'].timestamp).toBe(200);
     });
 
+    it('should return combined continue watching list for both movies and shows ordered chronologically', () => {
+      metadataRepo.saveCachedMetadata('movie_combined', 'movie', { id: 'movie_combined', type: 'movie', title: 'Combined Movie', year: '2024', released: null, genres: [], poster: null, background: null, logo: null, rating: null, runtime: null, description: null, awards: null, cast: [], director: [], writer: [], country: null, dvdRelease: null, moviedb_id: null, popularity: null });
+      metadataRepo.saveCachedMetadata('show_combined', 'show', {
+        id: 'show_combined',
+        type: 'show',
+        title: 'Combined Show',
+        year: '2024',
+        released: null,
+        genres: [],
+        poster: null,
+        background: null,
+        logo: null,
+        rating: null,
+        runtime: null,
+        description: null,
+        awards: null,
+        cast: [],
+        director: [],
+        writer: [],
+        country: null,
+        status: 'Continuing',
+        tvdb_id: null,
+        moviedb_id: null,
+        popularity: null,
+        episodes: [
+          { id: 'show_combined_s1_e1', show_id: 'show_combined', season: 1, episode: 1, title: 'Combined Ep 1', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null }
+        ]
+      }, 'Continuing');
+
+      progressRepo.saveProgress('movie_combined', { timestamp: 500, runtime: 6000 });
+      progressRepo.saveProgress('show_combined_s1_e1', { timestamp: 600, runtime: 3000 });
+
+      db.prepare('UPDATE progress SET last_updated = 10000 WHERE id = ?').run('movie_combined');
+      db.prepare('UPDATE progress SET last_updated = 20000 WHERE id = ?').run('show_combined_s1_e1');
+
+      const cwAll = progressRepo.getContinueWatching('all', 10);
+      expect(cwAll.metadata).toHaveLength(2);
+      expect(cwAll.metadata[0].id).toBe('show_combined');
+      expect(cwAll.metadata[1].id).toBe('movie_combined');
+      expect(cwAll.progress['show_combined_s1_e1'].timestamp).toBe(600);
+      expect(cwAll.progress['movie_combined'].timestamp).toBe(500);
+    });
+
     it('should return empty results when no continue watching records exist', () => {
       const cwMovies = progressRepo.getContinueWatching('movie');
       expect(cwMovies).toEqual({ metadata: [], progress: {}, ready: {} });

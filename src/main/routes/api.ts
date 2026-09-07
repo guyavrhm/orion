@@ -308,7 +308,7 @@ router.get('/api/queue', async (_req: Request, res: Response<QueueStateResponse>
 // 7. Continue watching carousel lists
 router.get('/api/continue-watching', (req: Request<unknown, MediaResponse<(MovieMetadata | ShowMetadata)[]>, unknown, ContinueWatchingQuery>, res: Response<MediaResponse<(MovieMetadata | ShowMetadata)[]>>) => {
   const limit = Number(req.query.limit) || 10;
-  const type = req.query.type ?? 'movie';
+  const type = (req.query.type as MediaType | 'all' | undefined) ?? 'all';
   const data = progressRepo.getContinueWatching(type, limit);
   res.json(data);
 });
