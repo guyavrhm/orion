@@ -61,7 +61,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   const [showSettingsMenu, setShowSettingsMenu] = useState<boolean>(false);
   const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
 
-  // Track cue container for parsed WebVTT
+  const initialTimestampRef = useRef<number>(initialTimestamp);
   const parsedCuesRef = useRef<SubtitleCue[]>([]);
 
   // 1. Fetch Stream Info
@@ -127,8 +127,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
           );
         }
 
-        if (initialTimestamp > 0) {
-          video.currentTime = initialTimestamp;
+        if (initialTimestampRef.current > 0) {
+          video.currentTime = initialTimestampRef.current;
+          initialTimestampRef.current = 0;
         }
 
         video.play().catch(() => {
@@ -174,8 +175,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       video.src = streamUrl;
       video.addEventListener('loadedmetadata', () => {
         setLoading(false);
-        if (initialTimestamp > 0) {
-          video.currentTime = initialTimestamp;
+        if (initialTimestampRef.current > 0) {
+          video.currentTime = initialTimestampRef.current;
+          initialTimestampRef.current = 0;
         }
         video.play().catch(() => {});
       });
@@ -183,7 +185,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       setError('HLS playback is not supported on this browser.');
       setLoading(false);
     }
-  }, [streamInfo, initialTimestamp]);
+  }, [streamInfo?.url]);
 
   // 4. Subtitle WebVTT loading & parsing for custom crisp rendering + RTL support
   useEffect(() => {
@@ -224,6 +226,19 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     };
   }, [activeSubtitleLang, streamInfo]);
 
+  const updateBuffer = (video: HTMLVideoElement, time: number) => {
+    let activeBufferEnd = time;
+    for (let i = 0; i < video.buffered.length; i++) {
+      const start = video.buffered.start(i);
+      const end = video.buffered.end(i);
+      if (time >= start - 0.5 && time <= end) {
+        activeBufferEnd = Math.max(activeBufferEnd, end);
+        break;
+      }
+    }
+    setBuffered(activeBufferEnd);
+  };
+
   // 5. Update active subtitle cue on timeupdate
   const handleTimeUpdate = () => {
     const video = videoRef.current;
@@ -233,13 +248,18 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     setCurrentTime(time);
     setDuration(video.duration || 0);
 
-    // Buffer progress
-    if (video.buffered.length > 0) {
-      setBuffered(video.buffered.end(video.buffered.length - 1));
-    }
+    // Buffer progress: match active buffer chunk around current playhead
+    updateBuffer(video, time);
 
     // Subtitle cue matching
     setCurrentSubtitleText(findActiveCueText(parsedCuesRef.current, time));
+  };
+
+  const handleProgress = () => {
+    const video = videoRef.current;
+    if (video) {
+      updateBuffer(video, video.currentTime);
+    }
   };
 
   // 6. Progress sync helper (periodic and explicit on pause/exit)
@@ -315,7 +335,10 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   const seekTo = (time: number) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.duration || 0, time));
+    const target = Math.max(0, Math.min(video.duration || 0, time));
+    video.currentTime = target;
+    setCurrentTime(target);
+    updateBuffer(video, target);
     triggerActivity();
   };
 
@@ -450,6 +473,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       <video
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
+        onProgress={handleProgress}
         onPlay={() => setIsPlaying(true)}
         onPause={() => {
           setIsPlaying(false);

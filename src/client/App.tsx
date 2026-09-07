@@ -146,7 +146,7 @@ export function App() {
   };
 
   // Update Playback Progress
-  const handleProgressUpdate = async (fileId: string, timestamp: number, duration: number) => {
+  const handleProgressUpdate = useCallback(async (fileId: string, timestamp: number, duration: number) => {
     try {
       const percent = duration > 0 ? (timestamp / duration) * 100 : 0;
       setProgressMap((prev) => ({
@@ -174,7 +174,7 @@ export function App() {
     } catch (err) {
       console.error(`Failed to update progress for ${fileId}:`, err);
     }
-  };
+  }, []);
 
   // Scroll Restoration for Explore / Detail navigation
   const exploreScrollYRef = useRef<number>(0);
