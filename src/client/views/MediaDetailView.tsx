@@ -39,10 +39,12 @@ export function MediaDetailView({
   const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
   const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
   const activeEpisodeCardRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledRef = useRef(false);
 
   // Scroll to top on mount / media change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    hasScrolledRef.current = false;
   }, [media.id]);
 
   useEffect(() => {
@@ -50,23 +52,19 @@ export function MediaDetailView({
     setLocalProgress({});
     setLocalReady({});
 
-    // Check if media already has an episode selected (e.g. from continue watching)
+    // Check if media has watch progress to resume to
     if (media.type === 'show') {
-      if ('episodes' in media && Array.isArray(media.episodes) && media.episodes.length > 0) {
-        if (media.episodes[0].season) setSelectedSeason(media.episodes[0].season);
-        if (media.episodes[0].episode) setTargetEpisodeNumber(media.episodes[0].episode);
+      const showProgKeys = Object.entries(progressMap)
+        .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && (v.timestamp > 0 || (v.last_updated && v.last_updated > 0)))
+        .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
+
+      if (showProgKeys.length > 0) {
+        const parsed = parseDisplayFileId(showProgKeys[0][0]);
+        if (parsed.season) setSelectedSeason(parsed.season);
+        if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
       } else {
-        const showProgKeys = Object.entries(progressMap)
-          .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && v.last_updated)
-          .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
-        if (showProgKeys.length > 0) {
-          const parsed = parseDisplayFileId(showProgKeys[0][0]);
-          if (parsed.season) setSelectedSeason(parsed.season);
-          if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
-        } else {
-          setSelectedSeason(1);
-          setTargetEpisodeNumber(null);
-        }
+        setSelectedSeason(1);
+        setTargetEpisodeNumber(null);
       }
     } else {
       setSelectedSeason(1);
@@ -89,11 +87,11 @@ export function MediaDetailView({
           if (res.metadata) setDetailedMedia(res.metadata as ShowMetadata);
           if (res.progress) {
             setLocalProgress(res.progress);
-            const progEntries = Object.entries(res.progress).filter(([k, v]) => v && v.last_updated);
-            if (progEntries.length > 0) {
-              progEntries.sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
-              const latestKey = progEntries[0][0];
-              const parsed = parseDisplayFileId(latestKey);
+            const showProgKeys = Object.entries(res.progress)
+              .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && (v.timestamp > 0 || (v.last_updated && v.last_updated > 0)))
+              .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
+            if (showProgKeys.length > 0 && !hasScrolledRef.current) {
+              const parsed = parseDisplayFileId(showProgKeys[0][0]);
               if (parsed.season) setSelectedSeason(parsed.season);
               if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
             }
@@ -104,9 +102,10 @@ export function MediaDetailView({
     }
   }, [media]);
 
-  // Scroll to active episode card
+  // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
   useEffect(() => {
-    if (activeEpisodeCardRef.current) {
+    if (targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
+      hasScrolledRef.current = true;
       activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [selectedSeason, detailedMedia, targetEpisodeNumber]);
@@ -273,7 +272,10 @@ export function MediaDetailView({
                     <button
                       key={s}
                       type="button"
-                      onClick={() => setSelectedSeason(s)}
+                      onClick={() => {
+                        setSelectedSeason(s);
+                        setTargetEpisodeNumber(null);
+                      }}
                       className={`px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                         selectedSeason === s
                           ? 'bg-indigo-600 text-white shadow-md'
