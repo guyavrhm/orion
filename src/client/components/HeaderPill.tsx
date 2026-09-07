@@ -117,13 +117,10 @@ export function HeaderPill({
         className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
       >
         <header
-          onClick={() => {
-            if (!isSearching) setIsSearching(true);
-          }}
           className={`flex items-center justify-between rounded-full glass-panel bg-zinc-900/80 backdrop-blur-2xl border transition-all duration-300 shadow-2xl px-4 h-12 w-full ${
             isSearching
               ? 'border-white/20 bg-zinc-900/95'
-              : 'border-white/10 hover:border-white/20 cursor-pointer'
+              : 'border-white/10'
           }`}
         >
           {isSearching ? (
@@ -201,8 +198,9 @@ export function HeaderPill({
               {/* Right: Search Icon Button */}
               <button
                 type="button"
+                onClick={() => setIsSearching(true)}
                 className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
-                title="Search"
+                title="Search (⌘K)"
               >
                 <Search className="w-4 h-4" />
               </button>
