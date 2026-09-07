@@ -582,65 +582,71 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
               {/* Subtitles & Audio Dropdown Menu */}
               {showSubtitleMenu && (
-                <div className="absolute right-0 top-12 w-64 glass-panel rounded-2xl p-3 shadow-2xl z-40 border border-zinc-700/50">
-                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Subtitles</div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto mb-2 pr-1 overscroll-contain">
-                    <button
-                      onClick={() => {
-                        setActiveSubtitleLang(null);
-                        ApiClient.saveSubtitlePreference(media.mediaId, null);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition cursor-pointer ${
-                        !activeSubtitleLang ? 'bg-zinc-800 text-white font-semibold' : 'hover:bg-zinc-800/80 text-zinc-300'
-                      }`}
-                    >
-                      <span>Off</span>
-                      {!activeSubtitleLang && <Check className="w-4 h-4 text-red-400" />}
-                    </button>
-                    {streamInfo?.subtitles?.map((sub) => (
-                      <button
-                        key={sub.lang}
-                        onClick={() => {
-                          setActiveSubtitleLang(sub.lang);
-                          ApiClient.saveSubtitlePreference(media.mediaId, sub.lang);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition cursor-pointer ${
-                          activeSubtitleLang === sub.lang
-                            ? 'bg-zinc-800 text-white font-semibold'
-                            : 'hover:bg-zinc-800/80 text-zinc-300'
-                        }`}
-                      >
-                        <span className="capitalize">{sub.lang}</span>
-                        {activeSubtitleLang === sub.lang && <Check className="w-4 h-4 text-red-400" />}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Audio Track Selector */}
-                  {audioTracks.length > 1 && (
-                    <div className="border-t border-zinc-800 pt-2.5 mt-2">
-                      <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Audio Track</div>
-                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1 overscroll-contain">
-                        {audioTracks.map((trk) => (
+                <div className="absolute right-0 top-12 w-64 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl z-40 border border-white/10 overflow-hidden">
+                  <div className="p-2 max-h-72 overflow-y-auto overscroll-contain space-y-3">
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Subtitles</div>
+                      <div className="space-y-0.5">
+                        <button
+                          onClick={() => {
+                            setActiveSubtitleLang(null);
+                            ApiClient.saveSubtitlePreference(media.mediaId, null);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            !activeSubtitleLang
+                              ? 'bg-red-600 text-white shadow-sm'
+                              : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span>Off</span>
+                          {!activeSubtitleLang && <Check className="w-3.5 h-3.5 text-white" />}
+                        </button>
+                        {streamInfo?.subtitles?.map((sub) => (
                           <button
-                            key={trk.id}
+                            key={sub.lang}
                             onClick={() => {
-                              setActiveAudioTrack(trk.id);
-                              if (hlsRef.current) hlsRef.current.audioTrack = trk.id;
+                              setActiveSubtitleLang(sub.lang);
+                              ApiClient.saveSubtitlePreference(media.mediaId, sub.lang);
                             }}
-                            className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                              activeAudioTrack === trk.id
-                                ? 'bg-zinc-800 text-white font-semibold'
-                                : 'hover:bg-zinc-800 text-zinc-300'
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              activeSubtitleLang === sub.lang
+                                ? 'bg-red-600 text-white shadow-sm'
+                                : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                             }`}
                           >
-                            <span>{trk.name} ({trk.lang})</span>
-                            {activeAudioTrack === trk.id && <Check className="w-3.5 h-3.5 text-red-400" />}
+                            <span className="capitalize">{sub.lang}</span>
+                            {activeSubtitleLang === sub.lang && <Check className="w-3.5 h-3.5 text-white" />}
                           </button>
                         ))}
                       </div>
                     </div>
-                  )}
+
+                    {/* Audio Track Selector */}
+                    {audioTracks.length > 1 && (
+                      <div className="border-t border-white/10 pt-2.5">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Audio Track</div>
+                        <div className="space-y-0.5 max-h-36 overflow-y-auto overscroll-contain">
+                          {audioTracks.map((trk) => (
+                            <button
+                              key={trk.id}
+                              onClick={() => {
+                                setActiveAudioTrack(trk.id);
+                                if (hlsRef.current) hlsRef.current.audioTrack = trk.id;
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                activeAudioTrack === trk.id
+                                  ? 'bg-red-600 text-white shadow-sm'
+                                  : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span>{trk.name} ({trk.lang})</span>
+                              {activeAudioTrack === trk.id && <Check className="w-3.5 h-3.5 text-white" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -659,8 +665,8 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
               </button>
 
               {showSettingsMenu && (
-                <div className="absolute right-0 top-12 w-56 glass-panel rounded-2xl p-4 shadow-2xl z-40 border border-zinc-700/50">
-                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Speed</div>
+                <div className="absolute right-0 top-12 w-56 glass-panel bg-zinc-900/95 rounded-2xl p-3 shadow-2xl z-40 border border-white/10">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Speed</div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[0.5, 0.75, 1, 1.25, 1.5, 2].map((spd) => (
                       <button
@@ -669,8 +675,10 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                           if (videoRef.current) videoRef.current.playbackRate = spd;
                           setPlaybackRate(spd);
                         }}
-                        className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                          playbackRate === spd ? 'bg-red-600 text-white' : 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400'
+                        className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          playbackRate === spd
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white'
                         }`}
                       >
                         {spd}x
