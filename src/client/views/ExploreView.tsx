@@ -252,38 +252,88 @@ export function ExploreView({
         >
           {continueWatching.map((item) => {
             const isMovie = item.type === 'movie';
-            const isReady = isMediaReady(item);
-            const showEp = !isMovie && 'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0 ? item.episodes[0] : null;
-            const epId = showEp ? (showEp.id || `${item.id}_s${showEp.season}_e${showEp.episode}`) : null;
-            const progObj = isMovie
-              ? progressMap[item.id]
-              : (epId && progressMap[epId]) || Object.entries(progressMap).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || progressMap[item.id];
-            const percent = calculateProgressPercent(progObj);
 
-            const showEpInfo = (() => {
-              if (isMovie) return null;
-              if (showEp && showEp.season && showEp.episode) {
-                return { season: showEp.season, episode: showEp.episode };
-              }
-              const matchedKey = Object.keys(progressMap).find((k) => k.startsWith(`${item.id}_s`));
-              if (matchedKey) {
-                const parsed = parseDisplayFileId(matchedKey);
-                if (parsed.season && parsed.episode) {
-                  return { season: parsed.season, episode: parsed.episode };
-                }
-              }
-              return null;
-            })();
+            if (isMovie) {
+              const isReady = isMediaReady(item);
+              const progObj = progressMap[item.id];
+              const percent = calculateProgressPercent(progObj);
+              const activeRequest = activeRequests[item.id];
+              const subtitle = item.year || 'Movie';
 
-            const subtitle = isMovie 
-              ? item.year 
-              : showEpInfo 
-                ? `S${showEpInfo.season} E${showEpInfo.episode}` 
-                : (item.year || 'Show');
+              return (
+                <MediaCard
+                  key={`continue-${item.id}`}
+                  className="w-36 sm:w-44 flex-shrink-0"
+                  title={item.title}
+                  poster={item.poster}
+                  type={item.type}
+                  year={item.year}
+                  subtitle={subtitle}
+                  isReady={isReady}
+                  activeRequest={activeRequest}
+                  showReadyBadge={true}
+                  progressPercent={percent}
+                  onClick={() => {
+                    if (isReady) {
+                      onPlayDirect({
+                        fileId: item.id,
+                        mediaId: item.id,
+                        title: item.title,
+                        type: 'movie',
+                        poster: item.poster,
+                        background: item.background,
+                      });
+                    } else {
+                      onSelectMedia(item);
+                    }
+                  }}
+                  onPlayDirect={
+                    isReady
+                      ? () =>
+                          onPlayDirect({
+                            fileId: item.id,
+                            mediaId: item.id,
+                            title: item.title,
+                            type: 'movie',
+                            poster: item.poster,
+                            background: item.background,
+                          })
+                      : undefined
+                  }
+                />
+              );
+            }
 
-            const activeRequest = isMovie
-              ? activeRequests[item.id]
-              : (epId && activeRequests[epId]) || Object.entries(activeRequests).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || activeRequests[item.id];
+            // TV Show Handling: Find the latest active episode strictly by recent progress
+            const showProgressEntries = Object.entries(progressMap)
+              .filter(([k, v]) => v && (v.show_id === item.id || k.startsWith(`${item.id}_s`)))
+              .map(([k, v]) => {
+                const parsed = parseDisplayFileId(k);
+                const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
+                return { key: k, parsed, progress: v, lastUpdated };
+              })
+              .sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+            const latestProgress = showProgressEntries[0];
+            const fallbackEp = 'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0 ? item.episodes[0] : null;
+
+            const activeEpFileId = latestProgress?.key || (fallbackEp ? (fallbackEp.id || `${item.id}_s${fallbackEp.season}_e${fallbackEp.episode}`) : null);
+            const activeSeason = latestProgress?.parsed?.season || fallbackEp?.season || 1;
+            const activeEpisode = latestProgress?.parsed?.episode || fallbackEp?.episode || 1;
+            const activeProgObj = latestProgress?.progress || (activeEpFileId ? progressMap[activeEpFileId] : null);
+            const percent = calculateProgressPercent(activeProgObj);
+
+            const isReady = activeEpFileId
+              ? (!!readyMap[activeEpFileId] || activeRequests[activeEpFileId]?.status === 'ready')
+              : false;
+
+            // Only bind activeRequest strictly for the active episode (not other downloading episodes of the same show)
+            const activeRequest = activeEpFileId ? activeRequests[activeEpFileId] : undefined;
+            const subtitle = `S${activeSeason} E${activeEpisode}`;
+
+            const epMeta = ('episodes' in item && Array.isArray(item.episodes)
+              ? item.episodes.find((ep) => ep.season === activeSeason && ep.episode === activeEpisode)
+              : null) || fallbackEp;
 
             return (
               <MediaCard
@@ -298,33 +348,7 @@ export function ExploreView({
                 activeRequest={activeRequest}
                 showReadyBadge={true}
                 progressPercent={percent}
-                onClick={() => {
-                  if (isMovie && isReady) {
-                    onPlayDirect({
-                      fileId: item.id,
-                      mediaId: item.id,
-                      title: item.title,
-                      type: 'movie',
-                      poster: item.poster,
-                      background: item.background,
-                    });
-                  } else {
-                    onSelectMedia(item);
-                  }
-                }}
-                onPlayDirect={
-                  isMovie && isReady
-                    ? () =>
-                        onPlayDirect({
-                          fileId: item.id,
-                          mediaId: item.id,
-                          title: item.title,
-                          type: 'movie',
-                          poster: item.poster,
-                          background: item.background,
-                        })
-                    : undefined
-                }
+                onClick={() => onSelectMedia(item)}
               />
             );
           })}

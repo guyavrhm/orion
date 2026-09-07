@@ -17,9 +17,11 @@ interface MediaDetailViewProps {
   progressMap: Record<string, Progress>;
   readyMap: Record<string, Stream>;
   activeRequests: Record<string, UserActiveMediaState>;
+  isCached?: boolean;
   onBack: () => void;
   onPlayMedia: (info: PlayingMediaInfo) => void;
   onRequestMedia: (fileId: string) => Promise<void>;
+  onCacheMediaDetails?: (media: MovieMetadata | ShowMetadata) => void;
 }
 
 export function MediaDetailView({
@@ -27,9 +29,11 @@ export function MediaDetailView({
   progressMap,
   readyMap,
   activeRequests,
+  isCached = false,
   onBack,
   onPlayMedia,
   onRequestMedia,
+  onCacheMediaDetails,
 }: MediaDetailViewProps) {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
@@ -66,16 +70,39 @@ export function MediaDetailView({
     setLocalProgress({});
     setLocalReady({});
 
-    // Check if media has watch progress to resume to
-    if (media.type === 'show') {
-      const showProgKeys = Object.entries(progressMap)
-        .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && (v.timestamp > 0 || (v.last_updated && v.last_updated > 0)))
-        .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
+    const resolveTarget = (extraProg: Record<string, Progress> = {}) => {
+      const mergedProg = { ...extraProg, ...progressMap };
+      const showProgEntries = Object.entries(mergedProg)
+        .filter(([k, v]) => v && (v.show_id === media.id || k.startsWith(`${media.id}_s`)))
+        .map(([k, v]) => {
+          const parsed = parseDisplayFileId(k);
+          const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
+          return { key: k, parsed, lastUpdated };
+        });
 
-      if (showProgKeys.length > 0) {
-        const parsed = parseDisplayFileId(showProgKeys[0][0]);
-        if (parsed.season) setSelectedSeason(parsed.season);
-        if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
+      const activeReqEntries = Object.entries(activeRequests)
+        .filter(([k]) => k.startsWith(`${media.id}_s`))
+        .map(([k, v]) => {
+          const parsed = parseDisplayFileId(k);
+          const lastUpdated = v.updatedAt || 0;
+          return { key: k, parsed, lastUpdated };
+        });
+
+      const combined = [...showProgEntries, ...activeReqEntries]
+        .filter((e) => e.parsed.season && e.parsed.episode)
+        .sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+      if (combined.length > 0) {
+        return { season: combined[0].parsed.season, episode: combined[0].parsed.episode };
+      }
+      return null;
+    };
+
+    if (media.type === 'show') {
+      const target = resolveTarget();
+      if (target) {
+        setSelectedSeason(target.season);
+        setTargetEpisodeNumber(target.episode);
       } else {
         setSelectedSeason(1);
         setTargetEpisodeNumber(null);
@@ -86,43 +113,40 @@ export function MediaDetailView({
     }
 
     if (media.type === 'movie') {
-      if (!media.description && !media.cast?.length) {
+      if (!isCached && !media.description && !media.cast?.length) {
         ApiClient.getMovieDetails(media.id)
           .then((res) => {
-            if (res.metadata) setDetailedMedia(res.metadata as MovieMetadata);
+            if (res.metadata) {
+              setDetailedMedia(res.metadata as MovieMetadata);
+              onCacheMediaDetails?.(res.metadata);
+            }
             if (res.progress) setLocalProgress(res.progress);
             if (res.ready) setLocalReady(res.ready);
           })
           .catch(() => {});
       }
     } else {
-      ApiClient.getShowDetails(media.id)
-        .then((res) => {
-          if (res.metadata) setDetailedMedia(res.metadata as ShowMetadata);
-          if (res.progress) {
-            setLocalProgress(res.progress);
-            const showProgKeys = Object.entries(res.progress)
-              .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && (v.timestamp > 0 || (v.last_updated && v.last_updated > 0)))
-              .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
-            if (showProgKeys.length > 0 && !hasScrolledRef.current) {
-              const parsed = parseDisplayFileId(showProgKeys[0][0]);
-              if (parsed.season) setSelectedSeason(parsed.season);
-              if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
+      if (!isCached) {
+        ApiClient.getShowDetails(media.id)
+          .then((res) => {
+            if (res.metadata) {
+              setDetailedMedia(res.metadata as ShowMetadata);
+              onCacheMediaDetails?.(res.metadata);
             }
-          }
-          if (res.ready) setLocalReady(res.ready);
-        })
-        .catch(() => {});
+            if (res.progress) {
+              setLocalProgress(res.progress);
+              const target = resolveTarget(res.progress);
+              if (target) {
+                setSelectedSeason(target.season);
+                setTargetEpisodeNumber(target.episode);
+              }
+            }
+            if (res.ready) setLocalReady(res.ready);
+          })
+          .catch(() => {});
+      }
     }
   }, [media.id]);
-
-  // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
-  useEffect(() => {
-    if (targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
-      hasScrolledRef.current = true;
-      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [selectedSeason, detailedMedia, targetEpisodeNumber]);
 
   const current = detailedMedia || media;
   const isMovie = current.type === 'movie';
@@ -130,6 +154,16 @@ export function MediaDetailView({
   const episodes = showMeta?.episodes || [];
   const seasons = Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
   const currentSeasonEpisodes = episodes.filter((e) => e.season === selectedSeason);
+
+  // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
+  useEffect(() => {
+    const isReadyToScroll = isMovie || isCached || detailedMedia !== media || episodes.length > 0;
+
+    if (isReadyToScroll && targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
+      hasScrolledRef.current = true;
+      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedSeason, detailedMedia, targetEpisodeNumber, episodes.length, isMovie, media, isCached]);
 
   // Dynamic layout measurement: detect if season pills fit on the single header line
   useEffect(() => {
@@ -407,7 +441,7 @@ export function MediaDetailView({
                 const epReq = activeRequests[epFileId];
                 const epProg = mergedProgressMap[epFileId];
                 const epPercent = calculateProgressPercent(epProg);
-                const isTargetEpisode = targetEpisodeNumber === ep.episode;
+                const isTargetEpisode = targetEpisodeNumber === ep.episode && selectedSeason === ep.season;
 
                 return (
                   <div

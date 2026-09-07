@@ -163,7 +163,7 @@ export class CinemetaClient {
         throw new BadGatewayError(ErrorCode.SERVICE_ERROR);
       }
       const data = (await resp.json()) as CinemetaCatalogResponse;
-      return (data.metas || []).map((m: any) => normalizeRawShowMetadata(m));
+      return (data.metas || []).map((m: any) => normalizeRawShowMetadata({ ...m, videos: [] }));
     } catch (e) {
       if (e instanceof BadGatewayError) throw e;
       logger.error('Failed to fetch popular shows from Cinemeta', e);

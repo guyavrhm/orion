@@ -103,6 +103,7 @@ export function App() {
     const parsed = parseDisplayFileId(fileId);
     const mediaItem = selectedMedia || movies.find((m) => m.id === parsed.mediaId) || shows.find((s) => s.id === parsed.mediaId);
     if (mediaItem) {
+      const now = Date.now();
       setContinueWatching((prev) => {
         const filtered = prev.filter((item) => item.id !== mediaItem.id);
         return [mediaItem, ...filtered];
@@ -110,11 +111,15 @@ export function App() {
       setProgressMap((prev) => ({
         ...prev,
         [fileId]: prev[fileId] || {
+          id: fileId,
           fileId,
+          show_id: parsed.isEpisode ? parsed.mediaId : null,
           timestamp: 0,
+          runtime: 0,
           progressPercent: 0,
           duration: 0,
-          updatedAt: new Date().toISOString(),
+          last_updated: now,
+          updatedAt: new Date(now).toISOString(),
         },
       }));
     }
@@ -149,31 +154,42 @@ export function App() {
   const handleProgressUpdate = useCallback(async (fileId: string, timestamp: number, duration: number) => {
     try {
       const percent = duration > 0 ? (timestamp / duration) * 100 : 0;
+      const now = Date.now();
+      const parsed = parseDisplayFileId(fileId);
+      const mediaId = parsed.mediaId;
+
       setProgressMap((prev) => ({
         ...prev,
         [fileId]: {
+          id: fileId,
           fileId,
+          show_id: parsed.isEpisode ? mediaId : null,
           timestamp,
+          runtime: duration,
           progressPercent: percent,
           duration,
-          updatedAt: new Date().toISOString(),
+          last_updated: now,
+          updatedAt: new Date(now).toISOString(),
         },
       }));
 
       // Keep the most recently watched title at the top of Continue Watching
-      const parsed = parseDisplayFileId(fileId);
-      const mediaId = parsed.mediaId;
       setContinueWatching((prev) => {
-        const itemIdx = prev.findIndex((item) => item.id === mediaId);
-        if (itemIdx <= 0) return prev;
-        const item = prev[itemIdx];
-        const next = [...prev];
-        next.splice(itemIdx, 1);
-        return [item, ...next];
+        const item = prev.find((i) => i.id === mediaId) || shows.find((s) => s.id === mediaId) || selectedMedia;
+        if (!item) return prev;
+        const filtered = prev.filter((i) => i.id !== mediaId);
+        return [item, ...filtered];
       });
     } catch (err) {
       console.error(`Failed to update progress for ${fileId}:`, err);
     }
+  }, [selectedMedia, shows]);
+
+  // In-Memory cache for fully resolved show & movie details
+  const mediaDetailsCacheRef = useRef<Record<string, MovieMetadata | ShowMetadata>>({});
+
+  const handleCacheMediaDetails = useCallback((meta: MovieMetadata | ShowMetadata) => {
+    mediaDetailsCacheRef.current[meta.id] = meta;
   }, []);
 
   // Scroll Restoration for Explore / Detail navigation
@@ -184,7 +200,8 @@ export function App() {
       // Save current explore view scroll position before entering detail view
       exploreScrollYRef.current = window.scrollY;
     }
-    setSelectedMedia(media);
+    const cached = mediaDetailsCacheRef.current[media.id] || media;
+    setSelectedMedia(cached);
   }, [selectedMedia]);
 
   const handleBack = useCallback(() => {
@@ -199,9 +216,8 @@ export function App() {
       {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}
       <HeaderPill
         onSelectMedia={handleSelectMedia}
-        readyMap={readyMap}
-        activeRequests={activeRequests}
         onBack={selectedMedia ? handleBack : undefined}
+        activeRequests={activeRequests}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
@@ -217,9 +233,11 @@ export function App() {
             progressMap={progressMap}
             readyMap={readyMap}
             activeRequests={activeRequests}
+            isCached={!!mediaDetailsCacheRef.current[selectedMedia.id]}
             onBack={handleBack}
             onPlayMedia={setPlayingMedia}
             onRequestMedia={handleRequestMedia}
+            onCacheMediaDetails={handleCacheMediaDetails}
           />
         ) : (
           <div className="pt-16 sm:pt-20">
