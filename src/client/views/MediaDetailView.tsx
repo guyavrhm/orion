@@ -99,7 +99,7 @@ export function MediaDetailView({
         })
         .catch(() => {});
     }
-  }, [media]);
+  }, [media.id]);
 
   // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
   useEffect(() => {

@@ -176,37 +176,35 @@ export function App() {
     }
   };
 
-  // Smart Scroll Restoration for Explore / Detail navigation
+  // Scroll Restoration for Explore / Detail navigation
   const exploreScrollYRef = useRef<number>(0);
 
-  const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata | null) => {
-    if (media && !selectedMedia) {
+  const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata) => {
+    if (!selectedMedia) {
       // Save current explore view scroll position before entering detail view
       exploreScrollYRef.current = window.scrollY;
     }
     setSelectedMedia(media);
   }, [selectedMedia]);
 
-  // Restore explore scroll position when returning to home view
-  useEffect(() => {
-    if (!selectedMedia) {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
-      });
-    }
-  }, [selectedMedia]);
+  const handleBack = useCallback(() => {
+    setSelectedMedia(null);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
+    });
+  }, []);
 
-  // Keyboard Shortcuts (Escape to close details modal)
+  // Keyboard Shortcuts (Escape to go back)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selectedMedia) handleSelectMedia(null);
+        if (selectedMedia) handleBack();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedMedia, handleSelectMedia]);
+  }, [selectedMedia, handleBack]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
@@ -215,7 +213,7 @@ export function App() {
         onSelectMedia={handleSelectMedia}
         readyMap={readyMap}
         activeRequests={activeRequests}
-        onBack={selectedMedia ? () => handleSelectMedia(null) : undefined}
+        onBack={selectedMedia ? handleBack : undefined}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
@@ -231,7 +229,7 @@ export function App() {
             progressMap={progressMap}
             readyMap={readyMap}
             activeRequests={activeRequests}
-            onBack={() => handleSelectMedia(null)}
+            onBack={handleBack}
             onPlayMedia={setPlayingMedia}
             onRequestMedia={handleRequestMedia}
           />
