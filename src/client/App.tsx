@@ -10,9 +10,9 @@ import type {
 } from './types/ui.js';
 import { ApiClient } from './services/api.js';
 import { useSSE } from './hooks/useSSE.js';
-import { parseDisplayFileId } from './utils/formatters.js';
+import { parseDisplayFileId, getFriendlyErrorMessage } from './utils/formatters.js';
 
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 
 // Views & Pages
 import { ExploreView } from './views/ExploreView.js';
@@ -35,7 +35,7 @@ export function App() {
   // Modals & Overlays State
   const [selectedMedia, setSelectedMedia] = useState<MovieMetadata | ShowMetadata | null>(null);
   const [playingMedia, setPlayingMedia] = useState<PlayingMediaInfo | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   // SSE Real-time Updates Hook
   const { activeRequests, setActiveRequests } = useSSE();
@@ -146,10 +146,28 @@ export function App() {
         delete next[fileId];
         return next;
       });
-      const errorMsg = err instanceof Error ? err.message : 'Failed to request stream';
-      setToast({ message: errorMsg, type: 'error' });
+      const friendlyMsg = getFriendlyErrorMessage(err);
+      if (friendlyMsg) {
+        setToast(friendlyMsg);
+      }
     }
   };
+
+  // Pre-validate stream availability before opening player to prevent pre-playback crashes
+  const handlePlayMedia = useCallback(async (info: PlayingMediaInfo) => {
+    try {
+      const streamInfo = await ApiClient.getStreamInfo(info.fileId);
+      if (streamInfo && streamInfo.url) {
+        setPlayingMedia(info);
+      }
+    } catch (err: unknown) {
+      console.error(`Failed to initiate playback for ${info.fileId}:`, err);
+      const friendlyMsg = getFriendlyErrorMessage(err);
+      if (friendlyMsg) {
+        setToast(friendlyMsg);
+      }
+    }
+  }, []);
 
   // Update Playback Progress
   const handleProgressUpdate = useCallback(async (fileId: string, timestamp: number, duration: number) => {
@@ -214,12 +232,14 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
-      {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}
+      {/* 1. Floating Top Glossy Header Pill with Search, Dynamic Back & Alert HUD */}
       <HeaderPill
         onSelectMedia={handleSelectMedia}
         onBack={selectedMedia ? handleBack : undefined}
         readyMap={readyMap}
         activeRequests={activeRequests}
+        toast={toast}
+        onClearToast={() => setToast(null)}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
@@ -236,7 +256,7 @@ export function App() {
             activeRequests={activeRequests}
             isCached={!!mediaDetailsCacheRef.current[selectedMedia.id]}
             onBack={handleBack}
-            onPlayMedia={setPlayingMedia}
+            onPlayMedia={handlePlayMedia}
             onRequestMedia={handleRequestMedia}
             onCacheMediaDetails={handleCacheMediaDetails}
           />
@@ -250,7 +270,7 @@ export function App() {
               readyMap={readyMap}
               activeRequests={activeRequests}
               onSelectMedia={handleSelectMedia}
-              onPlayDirect={setPlayingMedia}
+              onPlayDirect={handlePlayMedia}
             />
           </div>
         )}
@@ -264,28 +284,6 @@ export function App() {
           onClose={() => setPlayingMedia(null)}
           onProgressUpdate={handleProgressUpdate}
         />
-      )}
-
-      {/* 7. Floating Toast Alerts */}
-      {toast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-200 backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-200"
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          ) : toast.type === 'info' ? (
-            <Info className="w-5 h-5 text-zinc-400 flex-shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-          )}
-          <span className="text-xs font-semibold">{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
       )}
     </div>
   );

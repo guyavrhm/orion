@@ -20,7 +20,7 @@ import {
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient, type StreamInfoResponse } from '../services/api.js';
 import { useMediaSession } from '../hooks/useMediaSession.js';
-import { formatTime } from '../utils/formatters.js';
+import { formatTime, getFriendlyErrorMessage } from '../utils/formatters.js';
 import { parseWebVtt, findActiveCueText, isRtlText, type SubtitleCue } from '../utils/subtitles.js';
 
 interface HlsPlayerProps {
@@ -77,7 +77,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       })
       .catch((err) => {
         if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Failed to load media stream');
+        setError(getFriendlyErrorMessage(err) || 'Failed to load media stream');
         setLoading(false);
       });
 

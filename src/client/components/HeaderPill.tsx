@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
 import { ImageWithSkeleton } from './common/ImageWithSkeleton.js';
@@ -9,6 +9,8 @@ interface HeaderPillProps {
   readyMap?: Record<string, Stream>;
   activeRequests?: Record<string, UserActiveMediaState>;
   onBack?: () => void;
+  toast?: string | null;
+  onClearToast?: () => void;
 }
 
 export function HeaderPill({
@@ -16,6 +18,8 @@ export function HeaderPill({
   readyMap = {},
   activeRequests = {},
   onBack,
+  toast,
+  onClearToast,
 }: HeaderPillProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
@@ -116,13 +120,31 @@ export function HeaderPill({
         className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
       >
         <header
-          className={`flex items-center justify-between rounded-full glass-panel bg-zinc-900/80 backdrop-blur-2xl border transition-all duration-300 shadow-2xl px-4 h-12 w-full ${
-            isSearching
+          className={`flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full ${
+            toast
+              ? 'border-white/10 bg-zinc-900/90'
+              : isSearching
               ? 'border-white/20 bg-zinc-900/95'
-              : 'border-white/10'
+              : 'border-white/10 bg-zinc-900/80'
           }`}
         >
-          {isSearching ? (
+          {toast ? (
+            /* Toast Alert Mode: Dynamic Island Morph */
+            <div className="flex-1 flex items-center justify-between gap-3 min-w-0 h-full">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span className="text-xs font-medium text-zinc-200 truncate">{toast}</span>
+              </div>
+              <button
+                type="button"
+                onClick={onClearToast}
+                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex-shrink-0 cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : isSearching ? (
             /* Active Search Mode: Takes over the entire pill */
             <div className="flex-1 flex items-center gap-3 min-w-0 h-full">
               {loading ? (

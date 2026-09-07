@@ -68,3 +68,55 @@ export function parseDisplayFileId(fileId: string) {
     episode: undefined,
   };
 }
+
+/**
+ * Maps raw error codes and network exceptions to user-friendly messages.
+ * Returns null for errors that should be handled silently without toasts.
+ */
+export function getFriendlyErrorMessage(err: unknown): string | null {
+  const message = err instanceof Error ? err.message : String(err || '');
+  const normalized = message.trim();
+
+  // Errors to ignore silently (do not toast)
+  if (
+    normalized.includes('SERVICE_ERROR') ||
+    normalized.includes('BAD_REQUEST')
+  ) {
+    return null;
+  }
+
+  if (normalized.includes('PROVIDER_NOT_CONFIGURED')) {
+    return 'Torrent provider is not configured. Please check server settings in .env.';
+  }
+
+  if (normalized.includes('PROVIDER_UNAVAILABLE')) {
+    return 'Torrent provider is temporarily unavailable or timed out. Please try again later.';
+  }
+
+  if (normalized.includes('NO_STREAMS_FOUND')) {
+    return 'No streamable sources found for this title.';
+  }
+
+  if (normalized.includes('MEDIA_NOT_READY')) {
+    return 'This video is still preparing. Please wait a moment.';
+  }
+
+  if (normalized.includes('MEDIA_NOT_FOUND')) {
+    return 'Media details could not be found.';
+  }
+
+  if (
+    normalized.includes('Load failed') ||
+    normalized.includes('Failed to fetch') ||
+    normalized.includes('NetworkError')
+  ) {
+    return 'Unable to connect to Orion server. Check your connection.';
+  }
+
+  if (normalized.includes('INTERNAL_ERROR')) {
+    return 'Server encountered an unexpected error. Please try again.';
+  }
+
+  return normalized || 'An unexpected error occurred.';
+}
+
