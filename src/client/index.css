@@ -13,10 +13,12 @@
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     overflow-anchor: none;
+    overflow-x: hidden;
   }
 
   html {
     overflow-anchor: none;
+    overflow-x: hidden;
   }
 }
 

@@ -17,9 +17,6 @@ export function MediaDetailSkeleton() {
             <Skeleton className="h-4 w-16 rounded-md" />
             <Skeleton className="h-4 w-28 rounded-md" />
           </div>
-          <div className="pt-2">
-            <Skeleton className="h-11 w-36 rounded-xl" />
-          </div>
         </div>
       </div>
 
@@ -43,19 +40,19 @@ export function MediaDetailSkeleton() {
           </div>
 
           {/* Episode Cards Grid Skeleton */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div
                 key={`ep-skel-${i}`}
-                className="p-4 rounded-3xl bg-zinc-900/40 border border-zinc-800/60 flex flex-col justify-between space-y-3"
+                className="flex flex-col space-y-3"
               >
                 <Skeleton className="w-full aspect-video rounded-2xl" />
-                <div className="space-y-2">
+                <div className="space-y-2 px-0.5">
                   <Skeleton className="h-4 w-3/4 rounded-md" />
                   <Skeleton className="h-3 w-full rounded-md" />
                   <Skeleton className="h-3 w-2/3 rounded-md" />
                 </div>
-                <div className="pt-2 border-t border-zinc-800/50 flex items-center justify-between">
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between px-0.5">
                   <Skeleton className="h-3 w-12 rounded-md" />
                   <Skeleton className="h-7 w-20 rounded-xl" />
                 </div>

@@ -299,33 +299,6 @@ export function MediaDetailView({
               ))}
             </div>
           )}
-
-          {/* Movie Primary Play / Request Button (in Hero) */}
-          {isMovie && (
-            <div className="pt-2 flex items-center gap-4">
-              <StreamActionButton
-                isReady={isMovieReady}
-                activeRequest={movieReq}
-                isRequesting={requestingId === movieFileId}
-                hasProgress={Boolean(movieProg && movieProg.timestamp > 0)}
-                size="lg"
-                onPlay={() => {
-                  onPlayMedia({
-                    fileId: movieFileId,
-                    mediaId: current.id,
-                    title: current.title,
-                    type: 'movie',
-                    poster: current.poster,
-                    background: current.background,
-                  });
-                }}
-                onRequest={() => {
-                  setRequestingId(movieFileId);
-                  onRequestMedia(movieFileId).finally(() => setRequestingId(null));
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -361,6 +334,33 @@ export function MediaDetailView({
             </div>
           )}
         </div>
+
+        {/* Movie Primary Play / Request Action Button */}
+        {isMovie && (
+          <div className="pt-2 flex items-center gap-4">
+            <StreamActionButton
+              isReady={isMovieReady}
+              activeRequest={movieReq}
+              isRequesting={requestingId === movieFileId}
+              hasProgress={Boolean(movieProg && movieProg.timestamp > 0)}
+              size="lg"
+              onPlay={() => {
+                onPlayMedia({
+                  fileId: movieFileId,
+                  mediaId: current.id,
+                  title: current.title,
+                  type: 'movie',
+                  poster: current.poster,
+                  background: current.background,
+                });
+              }}
+              onRequest={() => {
+                setRequestingId(movieFileId);
+                onRequestMedia(movieFileId).finally(() => setRequestingId(null));
+              }}
+            />
+          </div>
+        )}
 
         {/* 3. TV Show Episode Browser */}
         {!isMovie && (
@@ -464,20 +464,20 @@ export function MediaDetailView({
             </div>
 
             {/* Episode Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {currentSeasonEpisodes.length === 0 && !isFetchCompleted ? (
-                [1, 2, 3, 4, 5, 6].map((i) => (
+                [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                   <div
                     key={`ep-skeleton-${i}`}
-                    className="p-4 rounded-3xl bg-zinc-900/40 border border-zinc-800/60 flex flex-col justify-between space-y-3"
+                    className="flex flex-col space-y-3"
                   >
                     <Skeleton className="w-full aspect-video rounded-2xl" />
-                    <div className="space-y-2">
+                    <div className="space-y-2 px-0.5">
                       <Skeleton className="h-4 w-3/4 rounded-md" />
                       <Skeleton className="h-3 w-full rounded-md" />
                       <Skeleton className="h-3 w-2/3 rounded-md" />
                     </div>
-                    <div className="pt-2 border-t border-zinc-800/50 flex items-center justify-between">
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between px-0.5">
                       <Skeleton className="h-3 w-12 rounded-md" />
                       <Skeleton className="h-7 w-20 rounded-xl" />
                     </div>
@@ -485,130 +485,136 @@ export function MediaDetailView({
                 ))
               ) : (
                 currentSeasonEpisodes.map((ep) => {
-                const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
-                const isEpReady = !!mergedReadyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
-                const epReq = activeRequests[epFileId];
-                const epProg = mergedProgressMap[epFileId];
-                const epPercent = calculateProgressPercent(epProg);
-                const isTargetEpisode = targetEpisodeNumber === ep.episode && selectedSeason === ep.season;
+                  const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
+                  const isEpReady = !!mergedReadyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
+                  const epReq = activeRequests[epFileId];
+                  const epProg = mergedProgressMap[epFileId];
+                  const epPercent = calculateProgressPercent(epProg);
+                  const isTargetEpisode = targetEpisodeNumber === ep.episode && selectedSeason === ep.season;
 
-                return (
-                  <div
-                    key={ep.id}
-                    ref={isTargetEpisode ? activeEpisodeCardRef : undefined}
-                    className="p-4 rounded-3xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col justify-between space-y-3"
-                  >
-                    {/* Episode Thumbnail */}
-                    <div
-                      onClick={() => {
-                        if (isEpReady) {
-                          onPlayMedia({
-                            fileId: epFileId,
-                            mediaId: current.id,
-                            title: current.title,
-                            subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                            type: 'show',
-                            season: ep.season,
-                            episode: ep.episode,
-                            poster: ep.thumbnail || current.poster,
-                            background: current.background,
-                          });
-                        }
-                      }}
-                      className={`w-full aspect-video rounded-2xl overflow-hidden bg-zinc-950 relative border border-white/10 ${
-                        isEpReady ? 'group/thumb cursor-pointer' : ''
-                      }`}
+                  return (
+                    <motion.div
+                      key={ep.id}
+                      ref={isTargetEpisode ? activeEpisodeCardRef : undefined}
+                      whileHover={{ y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      className="group relative flex flex-col justify-between space-y-3 rounded-2xl select-none"
                     >
-                      <ImageWithSkeleton
-                        src={ep.thumbnail}
-                        alt={ep.title}
-                        className={`w-full h-full object-cover transition-transform duration-300 ${
-                          isEpReady ? 'group-hover/thumb:scale-105' : ''
+                      {/* Top: 16:9 Landscape Episode Thumbnail */}
+                      <div
+                        onClick={() => {
+                          if (isEpReady) {
+                            onPlayMedia({
+                              fileId: epFileId,
+                              mediaId: current.id,
+                              title: current.title,
+                              subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
+                              type: 'show',
+                              season: ep.season,
+                              episode: ep.episode,
+                              poster: ep.thumbnail || current.poster,
+                              background: current.background,
+                            });
+                          }
+                        }}
+                        className={`w-full aspect-video rounded-2xl overflow-hidden bg-zinc-900 relative border border-white/10 group-hover:border-white/25 shadow-lg transition-all duration-300 ${
+                          isEpReady ? 'cursor-pointer' : ''
                         }`}
-                        fallback={
-                          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
-                            <Tv className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-bold tabular-nums">EP {ep.episode}</span>
+                      >
+                        <ImageWithSkeleton
+                          src={ep.thumbnail}
+                          alt={ep.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                          fallback={
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-600">
+                              <Tv className="w-6 h-6 mb-1" />
+                              <span className="text-[10px] font-bold tabular-nums">EP {ep.episode}</span>
+                            </div>
+                          }
+                        />
+
+                        {/* Ambient Shadow Gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+
+                        {/* Hover action overlay (Play when ready) */}
+                        {isEpReady && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                            <div className="p-3.5 rounded-full bg-red-600 text-white transform group-hover:scale-110 transition-transform shadow-lg flex items-center justify-center">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
                           </div>
-                        }
-                      />
+                        )}
 
-                      {/* Ready Play circle overlay on hover */}
-                      {isEpReady && (
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="p-3 rounded-full bg-red-600 text-white transform group-hover/thumb:scale-110 transition-transform shadow-lg">
-                            <Play className="w-4 h-4 fill-current ml-0.5" />
+                        {/* Ready checkmark badge on episode thumbnail */}
+                        {isEpReady && (
+                          <span className="absolute top-2 right-2 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center z-10">
+                            <Check className="w-3 h-3 stroke-[2.5]" />
+                          </span>
+                        )}
+
+                        {ep.runtime && (
+                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300 border border-white/5 backdrop-blur-md z-10">
+                            {ep.runtime}m
+                          </span>
+                        )}
+
+                        {epPercent > 0 && (
+                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/70 z-10">
+                            <div
+                              className="h-full bg-red-600 rounded-r-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, Math.max(5, epPercent))}%` }}
+                            />
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
-                      {/* Ready checkmark badge on episode thumbnail */}
-                      {isEpReady && (
-                        <span className="absolute top-1.5 right-1.5 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center">
-                          <Check className="w-3 h-3 stroke-[2.5]" />
+                      {/* Middle: Episode Typography with unified baseline */}
+                      <div className="space-y-1 px-0.5 flex-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors">
+                          <span className="text-red-400 mr-1.5 tabular-nums">EP {ep.episode}</span>
+                          <span>{ep.title || `Episode ${ep.episode}`}</span>
+                        </h4>
+                        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                          {ep.description || 'No episode synopsis provided.'}
+                        </p>
+                      </div>
+
+                      {/* Bottom Footer Row: Compact Stream Action Button */}
+                      <div className="pt-2 border-t border-white/5 flex items-center justify-between px-0.5">
+                        <span className="text-[11px] text-zinc-400 font-medium tabular-nums">
+                          {ep.runtime ? `${ep.runtime} min` : ''}
                         </span>
-                      )}
 
-                      {ep.runtime && (
-                        <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300">
-                          {ep.runtime}m
-                        </span>
-                      )}
-
-                      {epPercent > 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/70">
-                          <div
-                            className="h-full bg-red-600 rounded-r-full"
-                            style={{ width: `${Math.min(100, Math.max(5, epPercent))}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Episode Info */}
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-white truncate">
-                        {ep.episode}. {ep.title}
-                      </h4>
-                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-                        {ep.description || 'No episode synopsis provided.'}
-                      </p>
-                    </div>
-
-                    {/* Footer Row: Meta & Stream Action Button */}
-                    <div className="pt-2 border-t border-zinc-800 flex items-center justify-between">
-                      <span className="text-[10px] text-zinc-400 font-medium tabular-nums">
-                        {ep.runtime ? `${ep.runtime}m` : `Season ${ep.season}`}
-                      </span>
-
-                      <StreamActionButton
-                        isReady={isEpReady}
-                        activeRequest={epReq}
-                        isRequesting={requestingId === epFileId}
-                        hasProgress={epPercent > 0}
-                        size="sm"
-                        onPlay={() => {
-                          onPlayMedia({
-                            fileId: epFileId,
-                            mediaId: current.id,
-                            title: current.title,
-                            subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                            type: 'show',
-                            season: ep.season,
-                            episode: ep.episode,
-                            poster: ep.thumbnail || current.poster,
-                            background: current.background,
-                          });
-                        }}
-                        onRequest={() => {
-                          setRequestingId(epFileId);
-                          onRequestMedia(epFileId).finally(() => setRequestingId(null));
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              }))}
+                        <StreamActionButton
+                          isReady={isEpReady}
+                          activeRequest={epReq}
+                          isRequesting={requestingId === epFileId}
+                          hasProgress={epPercent > 0}
+                          size="sm"
+                          onPlay={() => {
+                            onPlayMedia({
+                              fileId: epFileId,
+                              mediaId: current.id,
+                              title: current.title,
+                              subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
+                              type: 'show',
+                              season: ep.season,
+                              episode: ep.episode,
+                              poster: ep.thumbnail || current.poster,
+                              background: current.background,
+                            });
+                          }}
+                          onRequest={() => {
+                            setRequestingId(epFileId);
+                            onRequestMedia(epFileId).finally(() => setRequestingId(null));
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
             </div>
           </section>
         )}

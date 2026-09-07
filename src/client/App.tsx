@@ -28,6 +28,8 @@ export function App() {
   // Catalogs & Playback Data State
   const [movies, setMovies] = useState<MovieMetadata[]>([]);
   const [shows, setShows] = useState<ShowMetadata[]>([]);
+  const [spotlightItems, setSpotlightItems] = useState<(MovieMetadata | ShowMetadata)[]>([]);
+  const [heroIndex, setHeroIndex] = useState<number>(0);
   const [continueWatching, setContinueWatching] = useState<(MovieMetadata | ShowMetadata)[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, Progress>>({});
   const [readyMap, setReadyMap] = useState<Record<string, Stream>>({});
@@ -51,9 +53,20 @@ export function App() {
         ApiClient.getContinueWatching(10).catch(() => ({ metadata: [], progress: {}, ready: {} })),
       ]);
 
-      setMovies(moviesRes.metadata || []);
-      setShows(showsRes.metadata || []);
+      const mList = moviesRes.metadata || [];
+      const sList = showsRes.metadata || [];
+      setMovies(mList);
+      setShows(sList);
       setContinueWatching(contRes.metadata || []);
+
+      setSpotlightItems((prev) => {
+        if (prev.length > 0) return prev;
+        const combined = [...mList, ...sList].filter(
+          (item) => Boolean(item && (item.background || item.poster))
+        );
+        if (combined.length === 0) return [];
+        return [...combined].sort(() => Math.random() - 0.5).slice(0, 5);
+      });
 
       setProgressMap((prev) => ({
         ...prev,
@@ -232,7 +245,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white overflow-x-hidden">
       {/* 1. Floating Top Glossy Header Pill with Search, Dynamic Back & Alert HUD */}
       <HeaderPill
         onSelectMedia={handleSelectMedia}
@@ -244,9 +257,9 @@ export function App() {
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
-      <main className="flex-1">
+      <main className="flex-1 overflow-x-hidden">
         {loading ? (
-          <div className="pt-[calc(env(safe-area-inset-top,0px)+4rem)] sm:pt-20">
+          <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">
             <ExploreSkeleton />
           </div>
         ) : selectedMedia ? (
@@ -262,10 +275,13 @@ export function App() {
             onCacheMediaDetails={handleCacheMediaDetails}
           />
         ) : (
-          <div className="pt-[calc(env(safe-area-inset-top,0px)+4rem)] sm:pt-20">
+          <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">
             <ExploreView
               movies={movies}
               shows={shows}
+              spotlightItems={spotlightItems}
+              heroIndex={heroIndex}
+              onHeroIndexChange={setHeroIndex}
               continueWatching={continueWatching}
               progressMap={progressMap}
               readyMap={readyMap}

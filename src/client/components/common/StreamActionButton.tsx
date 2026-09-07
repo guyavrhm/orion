@@ -66,7 +66,7 @@ export function StreamActionButton({
         whileTap={{ scale: 0.96 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         onClick={onPlay}
-        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer shadow-lg shadow-red-950/40 ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer shadow-md ${sizeClasses[size]} ${className}`}
       >
         <Play className={`${iconSizes[size]} fill-current`} />
         <span>Play</span>

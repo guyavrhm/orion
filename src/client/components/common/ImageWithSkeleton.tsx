@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Skeleton } from './Skeleton.js';
 
-interface ImageWithSkeletonProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface ImageWithSkeletonProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+  src?: string | null;
   containerClassName?: string;
   skeletonClassName?: string;
   fallback?: React.ReactNode;
