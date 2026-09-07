@@ -117,7 +117,7 @@ export function ExploreView({
                       onSelectMedia(heroMovie);
                     }
                   }}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition cursor-pointer"
                 >
                   {isHeroMovieReady ? <Play className="w-4 h-4 fill-current" /> : <PlusCircle className="w-4 h-4" />}
                   <span>{isHeroMovieReady ? 'Play' : 'Request'}</span>
@@ -166,7 +166,7 @@ export function ExploreView({
                 {heroShow.description || 'Watch full seasons with automated subtitle sync.'}
               </p>
               <div className="pt-2">
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-red-400 group-hover:text-red-300">
                   Explore →
                 </span>
               </div>
@@ -179,7 +179,7 @@ export function ExploreView({
       {continueWatching.length > 0 && (
         <section className="space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <RotateCcw className="w-4 h-4 text-indigo-400" />
+            <RotateCcw className="w-4 h-4 text-red-400" />
             <span>Continue Watching</span>
           </h3>
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">
@@ -262,7 +262,7 @@ export function ExploreView({
       {/* 3. Horizontal Row of Popular Movies */}
       <section className="space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Film className="w-4 h-4 text-indigo-400" />
+          <Film className="w-4 h-4 text-red-400" />
           <span>Popular Movies</span>
         </h3>
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">
@@ -290,7 +290,7 @@ export function ExploreView({
       {/* 4. Horizontal Row of Trending TV Shows */}
       <section className="space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Tv className="w-4 h-4 text-indigo-400" />
+          <Tv className="w-4 h-4 text-red-400" />
           <span>Trending TV Shows</span>
         </h3>
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 pt-1">

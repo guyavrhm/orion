@@ -57,7 +57,7 @@ export function MediaCard({
             }}
             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           >
-            <div className="p-3 rounded-full bg-indigo-600 text-white transform group-hover:scale-110 transition-transform">
+            <div className="p-3 rounded-full bg-red-600 text-white transform group-hover:scale-110 transition-transform">
               <Play className="w-4 h-4 fill-current ml-0.5" />
             </div>
           </div>
@@ -74,7 +74,7 @@ export function MediaCard({
         {progressPercent > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60">
             <div
-              className="h-full bg-indigo-500 rounded-r-full transition-all duration-300"
+              className="h-full bg-red-600 rounded-r-full transition-all duration-300"
               style={{ width: `${Math.min(100, Math.max(5, progressPercent))}%` }}
             />
           </div>
@@ -82,7 +82,7 @@ export function MediaCard({
       </div>
 
       {/* Card Info */}
-      <h4 className="text-xs font-bold text-white truncate group-hover:text-indigo-300 transition">
+      <h4 className="text-xs font-bold text-white truncate group-hover:text-red-400 transition">
         {title}
       </h4>
 

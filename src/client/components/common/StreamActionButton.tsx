@@ -45,7 +45,7 @@ export function StreamActionButton({
       <div
         className={`inline-flex items-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-semibold ${sizeClasses[size]} ${className}`}
       >
-        <Loader2 className={`${iconSizes[size]} animate-spin text-indigo-400`} />
+        <Loader2 className={`${iconSizes[size]} animate-spin text-red-400`} />
         <span>{isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}</span>
       </div>
     );
@@ -55,7 +55,7 @@ export function StreamActionButton({
     return (
       <button
         onClick={onPlay}
-        className={`inline-flex items-center bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition cursor-pointer ${sizeClasses[size]} ${className}`}
       >
         <Play className={`${iconSizes[size]} fill-current`} />
         <span>Play</span>

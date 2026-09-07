@@ -518,7 +518,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       {/* Loading Spinner */}
       {loading && !error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none z-20">
-          <div className="w-14 h-14 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
           <span className="mt-4 text-sm font-medium tracking-wide text-zinc-300">Buffering stream...</span>
         </div>
       )}
@@ -601,7 +601,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                 }}
                 className={`p-2.5 rounded-full transition backdrop-blur-md cursor-pointer ${
                   activeSubtitleLang
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-red-600 text-white'
                     : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white'
                 }`}
                 title="Subtitles & Audio"
@@ -624,7 +624,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                       }`}
                     >
                       <span>Off</span>
-                      {!activeSubtitleLang && <Check className="w-4 h-4 text-indigo-400" />}
+                      {!activeSubtitleLang && <Check className="w-4 h-4 text-red-400" />}
                     </button>
                     {streamInfo?.subtitles?.map((sub) => (
                       <button
@@ -640,7 +640,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                         }`}
                       >
                         <span className="capitalize">{sub.lang}</span>
-                        {activeSubtitleLang === sub.lang && <Check className="w-4 h-4 text-indigo-400" />}
+                        {activeSubtitleLang === sub.lang && <Check className="w-4 h-4 text-red-400" />}
                       </button>
                     ))}
                   </div>
@@ -662,7 +662,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                               onClick={() => setSubSettings((prev) => ({ ...prev, fontSize: key as SubtitleSettings['fontSize'] }))}
                               className={`py-1 rounded-lg text-xs font-semibold uppercase transition cursor-pointer ${
                                 subSettings.fontSize === key
-                                  ? 'bg-indigo-600 text-white shadow-md'
+                                  ? 'bg-red-600 text-white shadow-md'
                                   : 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400'
                               }`}
                             >
@@ -686,7 +686,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                                 key={c.color}
                                 onClick={() => setSubSettings((prev) => ({ ...prev, color: c.color }))}
                                 className={`w-6 h-6 rounded-full border-2 transition cursor-pointer ${
-                                  subSettings.color === c.color ? 'border-indigo-400 scale-110' : 'border-transparent hover:scale-105'
+                                  subSettings.color === c.color ? 'border-red-500 scale-110' : 'border-transparent hover:scale-105'
                                 }`}
                                 style={{ backgroundColor: c.color }}
                                 title={c.name}
@@ -708,7 +708,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                                 onClick={() => setSubSettings((prev) => ({ ...prev, backgroundColor: b.bg }))}
                                 className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
                                   subSettings.backgroundColor === b.bg
-                                    ? 'bg-indigo-600 text-white'
+                                    ? 'bg-red-600 text-white'
                                     : 'bg-zinc-800 text-zinc-400 hover:text-white'
                                 }`}
                               >
@@ -768,7 +768,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                             }`}
                           >
                             <span>{trk.name} ({trk.lang})</span>
-                            {activeAudioTrack === trk.id && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                            {activeAudioTrack === trk.id && <Check className="w-3.5 h-3.5 text-red-400" />}
                           </button>
                         ))}
                       </div>
@@ -803,7 +803,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                           setPlaybackRate(spd);
                         }}
                         className={`py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                          playbackRate === spd ? 'bg-indigo-600 text-white' : 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400'
+                          playbackRate === spd ? 'bg-red-600 text-white' : 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400'
                         }`}
                       >
                         {spd}x
@@ -828,7 +828,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
           <button
             onClick={togglePlay}
-            className="p-5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition transform hover:scale-105 active:scale-95 cursor-pointer"
+            className="p-5 rounded-full bg-red-600 hover:bg-red-500 text-white transition transform hover:scale-105 active:scale-95 cursor-pointer"
             title="Play / Pause (Space / K)"
           >
             {isPlaying ? <Pause className="w-9 h-9" /> : <Play className="w-9 h-9 fill-current ml-1" />}
@@ -853,9 +853,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
               max={duration || 100}
               value={currentTime}
               onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-zinc-800 group-hover:h-2 rounded-lg appearance-none cursor-pointer accent-indigo-500 transition-all"
+              className="w-full h-1.5 bg-zinc-800 group-hover:h-2 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all"
               style={{
-                background: `linear-gradient(to right, #6366f1 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
+                background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
                   (currentTime / (duration || 1)) * 100
                 }% ${(buffered / (duration || 1)) * 100}%, #27272a ${(buffered / (duration || 1)) * 100}%)`,
               }}
@@ -880,7 +880,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                   step="0.05"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                  className="w-16 sm:w-24 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  className="w-16 sm:w-24 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600"
                 />
               </div>
 

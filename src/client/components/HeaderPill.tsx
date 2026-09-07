@@ -122,7 +122,7 @@ export function HeaderPill({
           }}
           className={`flex items-center justify-between rounded-full glass-panel bg-zinc-900/80 backdrop-blur-2xl border transition-all duration-300 shadow-2xl px-4 h-12 w-full ${
             isSearching
-              ? 'border-indigo-500/50 ring-2 ring-indigo-500/20 bg-zinc-900/95'
+              ? 'border-red-500/50 ring-2 ring-red-500/20 bg-zinc-900/95'
               : 'border-white/10 hover:border-white/20 cursor-pointer'
           }`}
         >
@@ -130,9 +130,9 @@ export function HeaderPill({
             /* Active Search Mode: Takes over the entire pill */
             <div className="flex-1 flex items-center gap-3 min-w-0 h-full">
               {loading ? (
-                <Loader2 className="w-4 h-4 text-indigo-400 animate-spin flex-shrink-0" />
+                <Loader2 className="w-4 h-4 text-red-400 animate-spin flex-shrink-0" />
               ) : (
-                <Search className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                <Search className="w-4 h-4 text-red-400 flex-shrink-0" />
               )}
 
               <input
@@ -247,7 +247,7 @@ export function HeaderPill({
                         {/* Title & Metadata */}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300 transition truncate">
+                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-red-400 transition truncate">
                               {item.title}
                             </h4>
                             <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-white/5 flex-shrink-0">

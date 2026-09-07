@@ -249,7 +249,7 @@ export function MediaDetailView({
           <div className="space-y-1.5">
             <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
               <div
-                className="bg-indigo-500 h-full rounded-full transition-all duration-300"
+                className="bg-red-600 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, Math.max(5, moviePercent))}%` }}
               />
             </div>
@@ -280,7 +280,7 @@ export function MediaDetailView({
           <section className="space-y-6 pt-4 border-t border-zinc-800/80">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Tv className="w-5 h-5 text-indigo-400" />
+                <Tv className="w-5 h-5 text-red-400" />
                 <span>Episodes</span>
               </h3>
 
@@ -297,7 +297,7 @@ export function MediaDetailView({
                       }}
                       className={`px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                         selectedSeason === s
-                          ? 'bg-indigo-600 text-white shadow-md'
+                          ? 'bg-red-600 text-white shadow-md'
                           : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                       }`}
                     >
@@ -363,7 +363,7 @@ export function MediaDetailView({
                       {/* Ready Play circle overlay on hover */}
                       {isEpReady && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
-                          <div className="p-3 rounded-full bg-indigo-600 text-white transform group-hover/thumb:scale-110 transition-transform shadow-lg">
+                          <div className="p-3 rounded-full bg-red-600 text-white transform group-hover/thumb:scale-110 transition-transform shadow-lg">
                             <Play className="w-4 h-4 fill-current ml-0.5" />
                           </div>
                         </div>
@@ -385,7 +385,7 @@ export function MediaDetailView({
                       {epPercent > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/70">
                           <div
-                            className="h-full bg-indigo-500 rounded-r-full"
+                            className="h-full bg-red-600 rounded-r-full"
                             style={{ width: `${Math.min(100, Math.max(5, epPercent))}%` }}
                           />
                         </div>

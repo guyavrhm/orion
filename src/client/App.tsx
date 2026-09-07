@@ -189,7 +189,7 @@ export function App() {
   }, [selectedMedia]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white">
       {/* 1. Floating Top Glossy Header Pill with Search & Dynamic Back */}
       <HeaderPill
         onSelectMedia={setSelectedMedia}
@@ -202,7 +202,7 @@ export function App() {
       <main className="flex-1 transition-all">
         {loading ? (
           <div className="min-h-[60vh] pt-28 flex flex-col items-center justify-center gap-4">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-sm font-semibold tracking-wide text-zinc-400">Loading Orion Catalog...</span>
           </div>
         ) : selectedMedia ? (
@@ -249,7 +249,7 @@ export function App() {
           {toast.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
           ) : toast.type === 'info' ? (
-            <Info className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+            <Info className="w-5 h-5 text-zinc-400 flex-shrink-0" />
           ) : (
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
           )}
