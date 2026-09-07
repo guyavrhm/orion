@@ -1,9 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Play, PlusCircle, RotateCcw, Film, Tv } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Info, RotateCcw, Film, Tv } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Progress, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
-import { RatingBadge } from '../components/common/RatingBadge.js';
 import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
 interface MediaCarouselRowProps {
@@ -117,9 +116,6 @@ export function ExploreView({
 }: ExploreViewProps) {
   // Hero Movie
   const heroMovie = movies[0];
-  const isHeroMovieReady = heroMovie
-    ? !!readyMap[heroMovie.id] || activeRequests[heroMovie.id]?.status === 'ready'
-    : false;
 
   // Helper to check ready status for any media item
   const isMediaReady = (item: MovieMetadata | ShowMetadata) => {
@@ -166,9 +162,7 @@ export function ExploreView({
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
             </div>
 
-            <div className="flex items-center justify-end">
-              <RatingBadge rating={heroMovie.rating} size="md" />
-            </div>
+            <div />
 
             <div className="space-y-3">
               {heroMovie.logo ? (
@@ -192,23 +186,12 @@ export function ExploreView({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isHeroMovieReady) {
-                      onPlayDirect({
-                        fileId: heroMovie.id,
-                        mediaId: heroMovie.id,
-                        title: heroMovie.title,
-                        type: 'movie',
-                        poster: heroMovie.poster,
-                        background: heroMovie.background,
-                      });
-                    } else {
-                      onSelectMedia(heroMovie);
-                    }
+                    onSelectMedia(heroMovie);
                   }}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition cursor-pointer shadow-lg shadow-red-950/40"
                 >
-                  {isHeroMovieReady ? <Play className="w-4 h-4 fill-current" /> : <PlusCircle className="w-4 h-4" />}
-                  <span>{isHeroMovieReady ? 'Play' : 'Request'}</span>
+                  <Info className="w-4 h-4" />
+                  <span>More Info</span>
                 </button>
               </div>
             </div>
@@ -232,9 +215,7 @@ export function ExploreView({
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
             </div>
 
-            <div className="flex items-center justify-end gap-2">
-              {heroShow.year && <span className="text-xs font-bold text-zinc-300">{heroShow.year}</span>}
-            </div>
+            <div />
 
             <div className="space-y-2">
               {heroShow.logo ? (
@@ -300,6 +281,10 @@ export function ExploreView({
                 ? `S${showEpInfo.season} E${showEpInfo.episode}` 
                 : (item.year || 'Show');
 
+            const activeRequest = isMovie
+              ? activeRequests[item.id]
+              : (epId && activeRequests[epId]) || Object.entries(activeRequests).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || activeRequests[item.id];
+
             return (
               <MediaCard
                 key={`continue-${item.id}`}
@@ -310,6 +295,8 @@ export function ExploreView({
                 year={item.year}
                 subtitle={subtitle}
                 isReady={isReady}
+                activeRequest={activeRequest}
+                showReadyBadge={true}
                 progressPercent={percent}
                 onClick={() => {
                   if (isMovie && isReady) {

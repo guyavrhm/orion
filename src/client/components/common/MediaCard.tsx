@@ -1,5 +1,6 @@
 import React from 'react';
-import { Film, Tv, Check, Play } from 'lucide-react';
+import { Film, Tv, Check, Play, Loader2, Clock } from 'lucide-react';
+import type { UserActiveMediaState } from '../../main/types/index.js';
 
 interface MediaCardProps {
   title: string;
@@ -8,6 +9,8 @@ interface MediaCardProps {
   year?: string | null;
   subtitle?: string | null;
   isReady?: boolean;
+  activeRequest?: UserActiveMediaState;
+  showReadyBadge?: boolean;
   progressPercent?: number;
   onClick: () => void;
   onPlayDirect?: () => void;
@@ -21,12 +24,17 @@ export function MediaCard({
   year,
   subtitle,
   isReady = false,
+  activeRequest,
+  showReadyBadge = false,
   progressPercent = 0,
   onClick,
   onPlayDirect,
   className = '',
 }: MediaCardProps) {
   const isMovie = type === 'movie';
+  const isQueued = activeRequest?.status === 'queued';
+  const isPreparing = activeRequest && activeRequest.status !== 'ready' && !isQueued;
+  const shouldShowCheck = isReady && (showReadyBadge || isMovie);
 
   return (
     <div
@@ -63,12 +71,23 @@ export function MediaCard({
           </div>
         )}
 
-        {/* Ready checkmark badge - only for movies */}
-        {isReady && isMovie && (
+        {/* Top-Right Status Badge */}
+        {isQueued ? (
+          <span className="absolute top-1.5 right-1.5 p-1 rounded-full glass-panel bg-black/70 border border-white/15 text-amber-400 shadow-md flex items-center justify-center backdrop-blur-md">
+            <Clock className="w-3 h-3 stroke-[2.2]" />
+          </span>
+        ) : isPreparing ? (
+          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full glass-panel bg-black/70 border border-white/15 text-white shadow-md flex items-center gap-1 backdrop-blur-md">
+            <Loader2 className="w-2.5 h-2.5 animate-spin text-red-400" />
+            <span className="text-[10px] font-mono font-bold leading-none">
+              {Math.round(parseFloat(activeRequest.progress || '0'))}%
+            </span>
+          </div>
+        ) : shouldShowCheck ? (
           <span className="absolute top-1.5 right-1.5 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center">
             <Check className="w-3 h-3 stroke-[2.5]" />
           </span>
-        )}
+        ) : null}
 
         {/* Progress bar overlay */}
         {progressPercent > 0 && (

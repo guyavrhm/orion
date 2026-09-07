@@ -307,7 +307,7 @@ export function MediaDetailView({
           </div>
 
           {current.cast && current.cast.length > 0 && (
-            <div className="space-y-3 p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80">
+            <div className="space-y-3 p-5 rounded-2xl glass-panel bg-zinc-900/60 border border-white/10 backdrop-blur-md">
               <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Starring</h4>
               <p className="text-xs text-zinc-300 leading-relaxed">
                 {current.cast.slice(0, 10).join(', ')}

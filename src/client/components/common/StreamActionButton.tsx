@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, PlusCircle, Loader2 } from 'lucide-react';
+import { Play, PlusCircle, Loader2, Clock } from 'lucide-react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 
 interface StreamActionButtonProps {
@@ -43,9 +43,13 @@ export function StreamActionButton({
     const isQueued = activeRequest.status === 'queued';
     return (
       <div
-        className={`inline-flex items-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-semibold ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center rounded-xl glass-panel bg-zinc-900/80 border border-white/10 text-zinc-300 text-xs font-semibold backdrop-blur-md ${sizeClasses[size]} ${className}`}
       >
-        <Loader2 className={`${iconSizes[size]} animate-spin text-red-400`} />
+        {isQueued ? (
+          <Clock className={`${iconSizes[size]} text-amber-400`} />
+        ) : (
+          <Loader2 className={`${iconSizes[size]} animate-spin text-red-400`} />
+        )}
         <span>{isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}</span>
       </div>
     );
@@ -55,7 +59,7 @@ export function StreamActionButton({
     return (
       <button
         onClick={onPlay}
-        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition cursor-pointer ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition cursor-pointer shadow-lg shadow-red-950/40 ${sizeClasses[size]} ${className}`}
       >
         <Play className={`${iconSizes[size]} fill-current`} />
         <span>Play</span>
@@ -67,7 +71,7 @@ export function StreamActionButton({
     <button
       onClick={onRequest}
       disabled={isRequesting}
-      className={`inline-flex items-center bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition cursor-pointer disabled:opacity-50 ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center glass-panel bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 border border-white/10 backdrop-blur-md transition cursor-pointer disabled:opacity-50 ${sizeClasses[size]} ${className}`}
     >
       {isRequesting ? (
         <Loader2 className={`${iconSizes[size]} animate-spin`} />
