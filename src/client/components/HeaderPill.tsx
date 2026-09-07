@@ -5,15 +5,15 @@ import { ApiClient } from '../services/api.js';
 
 interface HeaderPillProps {
   onSelectMedia: (media: MovieMetadata | ShowMetadata) => void;
-  readyMap: Record<string, Stream>;
-  activeRequests: Record<string, UserActiveMediaState>;
+  readyMap?: Record<string, Stream>;
+  activeRequests?: Record<string, UserActiveMediaState>;
   onBack?: () => void;
 }
 
 export function HeaderPill({
   onSelectMedia,
-  readyMap,
-  activeRequests,
+  readyMap = {},
+  activeRequests = {},
   onBack,
 }: HeaderPillProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);

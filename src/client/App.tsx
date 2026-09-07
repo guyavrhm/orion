@@ -217,6 +217,7 @@ export function App() {
       <HeaderPill
         onSelectMedia={handleSelectMedia}
         onBack={selectedMedia ? handleBack : undefined}
+        readyMap={readyMap}
         activeRequests={activeRequests}
       />
 
