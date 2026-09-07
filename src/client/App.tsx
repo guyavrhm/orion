@@ -21,7 +21,6 @@ import { ExploreView } from './views/ExploreView.js';
 // Core UI Components
 import { SidebarNav } from './components/SidebarNav.js';
 import { MediaDetailModal } from './components/MediaDetailModal.js';
-import { QueueDrawer } from './components/QueueDrawer.js';
 import { SearchOverlay } from './components/SearchOverlay.js';
 import { HlsPlayer } from './components/HlsPlayer.js';
 
@@ -40,11 +39,10 @@ export function App() {
   const [selectedMedia, setSelectedMedia] = useState<MovieMetadata | ShowMetadata | null>(null);
   const [playingMedia, setPlayingMedia] = useState<PlayingMediaInfo | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-  const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
 
   // SSE Real-time Updates Hook
-  const { activeRequests, refreshQueue, setActiveRequests } = useSSE();
+  const { activeRequests, setActiveRequests } = useSSE();
 
   // Initial Catalogs Data Loading
   const loadCatalogs = useCallback(async (silent = false) => {
@@ -192,14 +190,13 @@ export function App() {
       }
       if (e.key === 'Escape') {
         if (isSearchOpen) setIsSearchOpen(false);
-        else if (isQueueOpen) setIsQueueOpen(false);
         else if (selectedMedia) setSelectedMedia(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, isQueueOpen, selectedMedia]);
+  }, [isSearchOpen, selectedMedia]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-indigo-500 selection:text-white">
@@ -208,8 +205,6 @@ export function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenSearch={() => setIsSearchOpen(true)}
-        onToggleQueue={() => setIsQueueOpen((prev) => !prev)}
-        activeRequests={activeRequests}
       />
 
       {/* 2. Main Screen Area */}
@@ -253,15 +248,7 @@ export function App() {
         activeRequests={activeRequests}
       />
 
-      {/* 5. Active Queue Drawer */}
-      <QueueDrawer
-        isOpen={isQueueOpen}
-        onClose={() => setIsQueueOpen(false)}
-        activeRequests={activeRequests}
-        onRefresh={refreshQueue}
-      />
-
-      {/* 6. Custom Netflix-Grade HLS Video Player */}
+      {/* 5. Custom Netflix-Grade HLS Video Player */}
       {playingMedia && (
         <HlsPlayer
           media={playingMedia}
