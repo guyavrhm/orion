@@ -30,10 +30,3 @@ export interface MediaCatalogState {
   loading: boolean;
   error: string | null;
 }
-
-export interface SubtitleSettings {
-  fontSize: 'small' | 'medium' | 'large' | 'extra-large';
-  color: string;
-  backgroundColor: string;
-  offsetSeconds: number;
-}

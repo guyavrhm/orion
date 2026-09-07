@@ -17,10 +17,11 @@ import {
   Sliders,
   AlertCircle,
 } from 'lucide-react';
-import type { PlayingMediaInfo, SubtitleSettings } from '../types/ui.js';
+import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient, type StreamInfoResponse } from '../services/api.js';
 import { useMediaSession } from '../hooks/useMediaSession.js';
 import { formatTime } from '../utils/formatters.js';
+import { parseWebVtt, findActiveCueText, isRtlText, type SubtitleCue } from '../utils/subtitles.js';
 
 interface HlsPlayerProps {
   media: PlayingMediaInfo;
@@ -60,15 +61,8 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   const [showSettingsMenu, setShowSettingsMenu] = useState<boolean>(false);
   const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
 
-  const [subSettings, setSubSettings] = useState<SubtitleSettings>({
-    fontSize: 'medium',
-    color: '#ffffff',
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    offsetSeconds: 0,
-  });
-
   // Track cue container for parsed WebVTT
-  const parsedCuesRef = useRef<{ start: number; end: number; text: string }[]>([]);
+  const parsedCuesRef = useRef<SubtitleCue[]>([]);
 
   // 1. Fetch Stream Info
   useEffect(() => {
@@ -206,57 +200,28 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       return;
     }
 
+    let isSubMounted = true;
     fetch(track.url)
-      .then((res) => res.text())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Subtitle fetch error: ${res.status}`);
+        return res.text();
+      })
       .then((vttText) => {
-        const lines = vttText.split(/\r?\n/);
-        const cues: { start: number; end: number; text: string }[] = [];
-        let currentStart = 0;
-        let currentEnd = 0;
-        let currentContent: string[] = [];
-
-        const timeToSecs = (str: string) => {
-          const parts = str.trim().split(':');
-          if (parts.length === 3) {
-            return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2].replace(',', '.'));
-          } else if (parts.length === 2) {
-            return parseFloat(parts[0]) * 60 + parseFloat(parts[1].replace(',', '.'));
-          }
-          return 0;
-        };
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (line.includes('-->')) {
-            if (currentContent.length > 0) {
-              cues.push({
-                start: currentStart,
-                end: currentEnd,
-                text: currentContent.join('\n'),
-              });
-              currentContent = [];
-            }
-            const [startStr, endStr] = line.split('-->');
-            currentStart = timeToSecs(startStr);
-            currentEnd = timeToSecs(endStr.split(' ')[0]);
-          } else if (line && !line.startsWith('WEBVTT') && !line.startsWith('NOTE') && isNaN(Number(line))) {
-            currentContent.push(line);
-          }
-        }
-
-        if (currentContent.length > 0) {
-          cues.push({
-            start: currentStart,
-            end: currentEnd,
-            text: currentContent.join('\n'),
-          });
-        }
-
+        if (!isSubMounted) return;
+        const cues = parseWebVtt(vttText);
         parsedCuesRef.current = cues;
+        const videoTime = videoRef.current?.currentTime || 0;
+        setCurrentSubtitleText(findActiveCueText(cues, videoTime));
       })
       .catch(() => {
+        if (!isSubMounted) return;
         parsedCuesRef.current = [];
+        setCurrentSubtitleText('');
       });
+
+    return () => {
+      isSubMounted = false;
+    };
   }, [activeSubtitleLang, streamInfo]);
 
   // 5. Update active subtitle cue on timeupdate
@@ -273,10 +238,8 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       setBuffered(video.buffered.end(video.buffered.length - 1));
     }
 
-    // Subtitle cue matching with offset
-    const adjustedTime = time + (subSettings.offsetSeconds || 0);
-    const matched = parsedCuesRef.current.find((c) => adjustedTime >= c.start && adjustedTime <= c.end);
-    setCurrentSubtitleText(matched ? matched.text : '');
+    // Subtitle cue matching
+    setCurrentSubtitleText(findActiveCueText(parsedCuesRef.current, time));
   };
 
   // 6. Progress sync helper (periodic and explicit on pause/exit)
@@ -474,23 +437,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     handleClose,
   ]);
 
-  // Helper for subtitle font size classes
-  const getSubSizeClass = (size: SubtitleSettings['fontSize']) => {
-    switch (size) {
-      case 'small':
-        return 'text-lg sm:text-xl';
-      case 'large':
-        return 'text-2xl sm:text-4xl';
-      case 'extra-large':
-        return 'text-3xl sm:text-5xl';
-      case 'medium':
-      default:
-        return 'text-xl sm:text-2xl';
-    }
-  };
 
-  // RTL language detector
-  const isRtlText = (text: string) => /[\u0590-\u05FF\u0600-\u06FF]/.test(text);
 
   return (
     <div
@@ -543,20 +490,20 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       {/* Custom Subtitles Overlay */}
       {currentSubtitleText && !error && (
         <div
-          className="absolute bottom-20 sm:bottom-28 left-4 right-4 flex justify-center pointer-events-none z-20"
+          className={`absolute left-4 right-4 flex justify-center pointer-events-none z-20 text-center transition-all duration-300 ease-out ${
+            showControls ? 'bottom-24 sm:bottom-32' : 'bottom-6 sm:bottom-12'
+          }`}
           dir={isRtlText(currentSubtitleText) ? 'rtl' : 'ltr'}
         >
-          <div
-            className={`font-semibold tracking-wide rounded-lg px-4 py-1.5 leading-snug custom-subtitle-text max-w-4xl text-center whitespace-pre-line ${getSubSizeClass(
-              subSettings.fontSize
-            )}`}
+          <span
+            className="inline-block max-w-[88%] sm:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/80 backdrop-blur-[2px] shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
             style={{
-              color: subSettings.color,
-              backgroundColor: subSettings.backgroundColor,
+              fontSize: 'clamp(0.95rem, 3.2vmin, 2rem)',
+              lineHeight: 1.35,
             }}
           >
             {currentSubtitleText}
-          </div>
+          </span>
         </div>
       )}
 
@@ -611,9 +558,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
               {/* Subtitles & Audio Dropdown Menu */}
               {showSubtitleMenu && (
-                <div className="absolute right-0 top-12 w-80 glass-panel rounded-2xl p-4 shadow-2xl z-40 border border-zinc-700/50">
-                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Subtitles</div>
-                  <div className="space-y-1 max-h-40 overflow-y-auto mb-4 pr-1">
+                <div className="absolute right-0 top-12 w-64 glass-panel rounded-2xl p-3 shadow-2xl z-40 border border-zinc-700/50">
+                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Subtitles</div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto mb-2 pr-1 overscroll-contain">
                     <button
                       onClick={() => {
                         setActiveSubtitleLang(null);
@@ -645,115 +592,11 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                     ))}
                   </div>
 
-                  {/* Subtitle Customization */}
-                  {activeSubtitleLang && (
-                    <div className="border-t border-zinc-800 pt-3 space-y-3">
-                      <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Subtitle Size</div>
-                        <div className="grid grid-cols-4 gap-1">
-                          {[
-                            { key: 'small', label: 'S' },
-                            { key: 'medium', label: 'M' },
-                            { key: 'large', label: 'L' },
-                            { key: 'extra-large', label: 'XL' },
-                          ].map(({ key, label }) => (
-                            <button
-                              key={key}
-                              onClick={() => setSubSettings((prev) => ({ ...prev, fontSize: key as SubtitleSettings['fontSize'] }))}
-                              className={`py-1 rounded-lg text-xs font-semibold uppercase transition cursor-pointer ${
-                                subSettings.fontSize === key
-                                  ? 'bg-red-600 text-white shadow-md'
-                                  : 'bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400'
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Subtitle Color & Background */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Color</div>
-                          <div className="flex items-center gap-1.5">
-                            {[
-                              { color: '#ffffff', name: 'White' },
-                              { color: '#facc15', name: 'Yellow' },
-                              { color: '#38bdf8', name: 'Cyan' },
-                            ].map((c) => (
-                              <button
-                                key={c.color}
-                                onClick={() => setSubSettings((prev) => ({ ...prev, color: c.color }))}
-                                className={`w-6 h-6 rounded-full border-2 transition cursor-pointer ${
-                                  subSettings.color === c.color ? 'border-red-500 scale-110' : 'border-transparent hover:scale-105'
-                                }`}
-                                style={{ backgroundColor: c.color }}
-                                title={c.name}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Background</div>
-                          <div className="flex items-center gap-1.5">
-                            {[
-                              { bg: 'transparent', label: 'None' },
-                              { bg: 'rgba(0, 0, 0, 0.5)', label: 'Dim' },
-                              { bg: 'rgba(0, 0, 0, 0.85)', label: 'Dark' },
-                            ].map((b) => (
-                              <button
-                                key={b.bg}
-                                onClick={() => setSubSettings((prev) => ({ ...prev, backgroundColor: b.bg }))}
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                                  subSettings.backgroundColor === b.bg
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                                }`}
-                              >
-                                {b.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-zinc-400 pt-1">
-                        <span>Sync Offset ({subSettings.offsetSeconds.toFixed(1)}s)</span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() =>
-                              setSubSettings((prev) => ({ ...prev, offsetSeconds: prev.offsetSeconds - 0.5 }))
-                            }
-                            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-white font-mono"
-                          >
-                            -0.5s
-                          </button>
-                          <button
-                            onClick={() => setSubSettings((prev) => ({ ...prev, offsetSeconds: 0 }))}
-                            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-                          >
-                            Reset
-                          </button>
-                          <button
-                            onClick={() =>
-                              setSubSettings((prev) => ({ ...prev, offsetSeconds: prev.offsetSeconds + 0.5 }))
-                            }
-                            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-white font-mono"
-                          >
-                            +0.5s
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Audio Track Selector */}
                   {audioTracks.length > 1 && (
-                    <div className="border-t border-zinc-800 pt-3 mt-3">
-                      <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Audio Track</div>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                    <div className="border-t border-zinc-800 pt-2.5 mt-2">
+                      <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Audio Track</div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1 overscroll-contain">
                         {audioTracks.map((trk) => (
                           <button
                             key={trk.id}
