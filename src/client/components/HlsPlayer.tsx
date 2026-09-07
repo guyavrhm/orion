@@ -299,7 +299,16 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     };
   }, [flushProgress]);
 
-  // 7. Auto-hide Controls on Inactivity
+  // 7. Auto-hide Controls on Inactivity & Tap Toggle
+  const dismissControls = useCallback(() => {
+    setShowControls(false);
+    setShowSubtitleMenu(false);
+    setShowSettingsMenu(false);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+  }, []);
+
   const triggerActivity = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
@@ -311,6 +320,14 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       }
     }, 3500);
   }, [isPlaying, showSubtitleMenu, showSettingsMenu]);
+
+  const toggleControls = useCallback(() => {
+    if (showControls) {
+      dismissControls();
+    } else {
+      triggerActivity();
+    }
+  }, [showControls, dismissControls, triggerActivity]);
 
   // 8. Player Actions
   const togglePlay = useCallback(() => {
@@ -465,15 +482,82 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     showSettingsMenu,
     handleClose,
   ]);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      // Ignore touch moves so finger touches/drags don't trigger mouse hover inactivity resets
+      if (e.pointerType === 'touch') return;
+      triggerActivity();
+    },
+    [triggerActivity]
+  );
 
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // If the tap was on a button, input slider, dropdown menu item, or interactive control, do not dismiss
+      if (target.closest('button, input, select, textarea, [role="button"], a, .interactive-control')) {
+        return;
+      }
+      dismissControls();
+    },
+    [dismissControls]
+  );
 
+  // 11. Lock Body Scroll & Prevent Background Scroll Leaks
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const preventScroll = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('.overflow-y-auto')) return;
+      e.preventDefault();
+    };
+
+    const preventTouch = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      // Allow touch events on range sliders, buttons, inputs, and scrollable menus
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'BUTTON' ||
+        target.closest('input') ||
+        target.closest('button') ||
+        target.closest('.overflow-y-auto')
+      ) {
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+    };
+
+    container.addEventListener('wheel', preventScroll, { passive: false });
+    container.addEventListener('touchmove', preventTouch, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', preventScroll);
+      container.removeEventListener('touchmove', preventTouch);
+    };
+  }, []);
 
   return (
     <div
       ref={containerRef}
-      onMouseMove={triggerActivity}
-      onClick={triggerActivity}
-      className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden"
+      onPointerMove={handlePointerMove}
+      className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden overscroll-none"
     >
       {/* Video Element */}
       <video
@@ -487,7 +571,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         }}
         onWaiting={() => setLoading(true)}
         onPlaying={() => setLoading(false)}
-        onClick={togglePlay}
+        onClick={toggleControls}
         playsInline
         className="w-full h-full object-contain cursor-pointer"
       />
@@ -496,7 +580,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       {loading && !error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none z-20">
           <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="mt-4 text-sm font-medium tracking-wide text-zinc-300">Buffering stream...</span>
+          <span className="mt-4 text-sm font-medium tracking-wide text-zinc-300">Buffering...</span>
         </div>
       )}
 
@@ -539,8 +623,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
       {/* Modern Netflix-Grade UI Controls Overlay */}
       <div
+        onClick={handleOverlayClick}
         className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] sm:p-8 transition-opacity duration-300 z-30 ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          showControls ? 'opacity-100 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
         {/* Top Bar: Title and Back */}
@@ -697,8 +782,12 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
           </div>
         </div>
 
-        {/* Center: Play/Pause Big Trigger Feedback */}
-        <div className="flex items-center justify-center gap-8">
+        {/* Center: Play/Pause Big Trigger Feedback (Hidden when buffering) */}
+        <div
+          className={`flex items-center justify-center gap-8 transition-opacity duration-200 ${
+            loading ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
           <button
             onClick={() => seek(-10)}
             className="p-3.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer active:scale-95"
@@ -727,14 +816,16 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         {/* Bottom Bar: Timeline & Control Trays */}
         <div className="space-y-3">
           {/* Seek Progress Bar */}
-          <div className="group relative w-full h-3 flex items-center cursor-pointer">
+          <div className="group relative w-full h-6 flex items-center cursor-pointer touch-none">
             <input
               type="range"
               min="0"
               max={duration || 100}
+              step="any"
               value={currentTime}
               onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-zinc-800 group-hover:h-2 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all"
+              onInput={(e) => seekTo(parseFloat((e.target as HTMLInputElement).value))}
+              className="w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none"
               style={{
                 background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
                   (currentTime / (duration || 1)) * 100
@@ -758,10 +849,11 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                   type="range"
                   min="0"
                   max="1"
-                  step="0.05"
+                  step="0.01"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                  className="w-16 sm:w-24 h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600"
+                  onInput={(e) => changeVolume(parseFloat((e.target as HTMLInputElement).value))}
+                  className="w-16 sm:w-24 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none"
                 />
               </div>
 

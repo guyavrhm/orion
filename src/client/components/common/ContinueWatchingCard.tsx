@@ -43,7 +43,7 @@ export function ContinueWatchingCard({
       className={`group relative flex-shrink-0 cursor-pointer flex flex-col space-y-2 select-none ${className}`}
     >
       {/* 16:9 Landscape Artwork Container */}
-      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-zinc-900 relative border border-white/10 group-hover:border-white/25 shadow-lg group-hover:shadow-2xl group-hover:shadow-red-950/20 transition-all duration-300">
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-zinc-900 relative border border-white/10 group-hover:border-white/25 shadow-lg group-hover:shadow-2xl transition-all duration-300">
         <ImageWithSkeleton
           src={thumbnail}
           alt={title}

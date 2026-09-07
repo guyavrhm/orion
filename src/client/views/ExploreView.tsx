@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Film, Tv } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Progress, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
@@ -9,7 +9,7 @@ import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatter
 
 interface MediaCarouselRowProps {
   title: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -50,7 +50,7 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
   return (
     <section className="space-y-4 group/carousel relative">
       <div className="flex items-center justify-between">
-        <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2.5">
+        <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
           {icon}
           <span>{title}</span>
         </h3>
@@ -176,7 +176,6 @@ export function ExploreView({
         {continueWatching.length > 0 && (
           <MediaCarouselRow
             title="Continue Watching"
-            icon={<RotateCcw className="w-4 h-4 text-red-400" />}
           >
           {continueWatching.map((item) => {
             const isMovie = item.type === 'movie';
@@ -309,7 +308,6 @@ export function ExploreView({
       {movies.length > 0 && (
         <MediaCarouselRow
           title="Popular Movies"
-          icon={<Film className="w-4 h-4 text-red-400" />}
         >
           {movies.map((m) => {
             const isReady = isMediaReady(m);
@@ -336,7 +334,6 @@ export function ExploreView({
       {shows.length > 0 && (
         <MediaCarouselRow
           title="Trending TV Shows"
-          icon={<Tv className="w-4 h-4 text-red-400" />}
         >
           {shows.map((s) => {
             const isReady = isMediaReady(s);

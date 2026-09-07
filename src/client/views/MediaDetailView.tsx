@@ -367,9 +367,8 @@ export function MediaDetailView({
           <section className="space-y-6 pt-4 border-t border-zinc-800/80">
             {/* Single-row header: Always strictly on the same line */}
             <div ref={headerRowRef} className="flex items-center justify-between gap-3 min-w-0">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 flex-shrink-0">
-                <Tv className="w-5 h-5 text-red-400" />
-                <span>Episodes</span>
+              <h3 className="text-lg font-bold text-white tracking-tight flex-shrink-0">
+                Episodes
               </h3>
 
               {/* Dynamic Season Selector: Dropdown if pills don't fit, Segmented Tabs if they fit */}
@@ -464,7 +463,7 @@ export function MediaDetailView({
             </div>
 
             {/* Episode Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8 sm:gap-y-10">
               {currentSeasonEpisodes.length === 0 && !isFetchCompleted ? (
                 [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                   <div
@@ -472,14 +471,13 @@ export function MediaDetailView({
                     className="flex flex-col space-y-3"
                   >
                     <Skeleton className="w-full aspect-video rounded-2xl" />
-                    <div className="space-y-2 px-0.5">
-                      <Skeleton className="h-4 w-3/4 rounded-md" />
+                    <div className="space-y-1.5 px-0.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <Skeleton className="h-4 w-3/5 rounded-md" />
+                        <Skeleton className="h-6 w-16 rounded-xl" />
+                      </div>
                       <Skeleton className="h-3 w-full rounded-md" />
-                      <Skeleton className="h-3 w-2/3 rounded-md" />
-                    </div>
-                    <div className="pt-2 border-t border-white/5 flex items-center justify-between px-0.5">
-                      <Skeleton className="h-3 w-12 rounded-md" />
-                      <Skeleton className="h-7 w-20 rounded-xl" />
+                      <Skeleton className="h-3 w-4/5 rounded-md" />
                     </div>
                   </div>
                 ))
@@ -569,47 +567,45 @@ export function MediaDetailView({
                         )}
                       </div>
 
-                      {/* Middle: Episode Typography with unified baseline */}
-                      <div className="space-y-1 px-0.5 flex-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors">
-                          <span className="text-red-400 mr-1.5 tabular-nums">EP {ep.episode}</span>
-                          <span>{ep.title || `Episode ${ep.episode}`}</span>
-                        </h4>
+                      {/* Episode Content: Title Row (with right-aligned request button) and Description */}
+                      <div className="space-y-1.5 px-0.5 flex-1">
+                        <div className="flex items-center justify-between gap-3 min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors min-w-0">
+                            <span className="mr-1.5 tabular-nums">{ep.episode}.</span>
+                            <span>{ep.title || `Episode ${ep.episode}`}</span>
+                          </h4>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <StreamActionButton
+                              isReady={isEpReady}
+                              activeRequest={epReq}
+                              isRequesting={requestingId === epFileId}
+                              hasProgress={epPercent > 0}
+                              size="sm"
+                              onPlay={() => {
+                                onPlayMedia({
+                                  fileId: epFileId,
+                                  mediaId: current.id,
+                                  title: current.title,
+                                  subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
+                                  type: 'show',
+                                  season: ep.season,
+                                  episode: ep.episode,
+                                  poster: ep.thumbnail || current.poster,
+                                  background: current.background,
+                                });
+                              }}
+                              onRequest={() => {
+                                setRequestingId(epFileId);
+                                onRequestMedia(epFileId).finally(() => setRequestingId(null));
+                              }}
+                            />
+                          </div>
+                        </div>
+
                         <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
                           {ep.description || 'No episode synopsis provided.'}
                         </p>
-                      </div>
-
-                      {/* Bottom Footer Row: Compact Stream Action Button */}
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between px-0.5">
-                        <span className="text-[11px] text-zinc-400 font-medium tabular-nums">
-                          {ep.runtime ? `${ep.runtime} min` : ''}
-                        </span>
-
-                        <StreamActionButton
-                          isReady={isEpReady}
-                          activeRequest={epReq}
-                          isRequesting={requestingId === epFileId}
-                          hasProgress={epPercent > 0}
-                          size="sm"
-                          onPlay={() => {
-                            onPlayMedia({
-                              fileId: epFileId,
-                              mediaId: current.id,
-                              title: current.title,
-                              subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                              type: 'show',
-                              season: ep.season,
-                              episode: ep.episode,
-                              poster: ep.thumbnail || current.poster,
-                              background: current.background,
-                            });
-                          }}
-                          onRequest={() => {
-                            setRequestingId(epFileId);
-                            onRequestMedia(epFileId).finally(() => setRequestingId(null));
-                          }}
-                        />
                       </div>
                     </motion.div>
                   );
