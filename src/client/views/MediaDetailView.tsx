@@ -43,6 +43,7 @@ export function MediaDetailView({
   const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(null);
   const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
   const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
+  const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
   const activeEpisodeCardRef = useRef<HTMLDivElement | null>(null);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
   const hasScrolledRef = useRef(false);
@@ -69,6 +70,7 @@ export function MediaDetailView({
     setDetailedMedia(media);
     setLocalProgress({});
     setLocalReady({});
+    setIsFetchCompleted(isCached);
 
     const resolveTarget = (extraProg: Record<string, Progress> = {}) => {
       const mergedProg = { ...extraProg, ...progressMap };
@@ -123,7 +125,10 @@ export function MediaDetailView({
             if (res.progress) setLocalProgress(res.progress);
             if (res.ready) setLocalReady(res.ready);
           })
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => setIsFetchCompleted(true));
+      } else {
+        setIsFetchCompleted(true);
       }
     } else {
       if (!isCached) {
@@ -143,7 +148,10 @@ export function MediaDetailView({
             }
             if (res.ready) setLocalReady(res.ready);
           })
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => setIsFetchCompleted(true));
+      } else {
+        setIsFetchCompleted(true);
       }
     }
   }, [media.id]);
@@ -157,13 +165,13 @@ export function MediaDetailView({
 
   // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
   useEffect(() => {
-    const isReadyToScroll = isMovie || isCached || detailedMedia !== media || episodes.length > 0;
+    const isReadyToScroll = isMovie || isCached || isFetchCompleted || detailedMedia !== media;
 
     if (isReadyToScroll && targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
       hasScrolledRef.current = true;
       activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [selectedSeason, detailedMedia, targetEpisodeNumber, episodes.length, isMovie, media, isCached]);
+  }, [selectedSeason, detailedMedia, targetEpisodeNumber, episodes.length, isMovie, media, isCached, isFetchCompleted]);
 
   // Dynamic layout measurement: detect if season pills fit on the single header line
   useEffect(() => {

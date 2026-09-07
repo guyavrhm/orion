@@ -79,7 +79,7 @@ export function MediaCard({
         ) : isPreparing ? (
           <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full glass-panel bg-black/70 border border-white/15 text-white shadow-md flex items-center gap-1 backdrop-blur-md">
             <Loader2 className="w-2.5 h-2.5 animate-spin text-red-400" />
-            <span className="text-[10px] font-mono font-bold leading-none">
+            <span className="text-[10px] font-bold tabular-nums leading-none">
               {Math.round(parseFloat(activeRequest.progress || '0'))}%
             </span>
           </div>
