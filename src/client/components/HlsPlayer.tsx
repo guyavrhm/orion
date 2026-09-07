@@ -482,26 +482,50 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     showSettingsMenu,
     handleClose,
   ]);
+
+  const isTouchInteractionRef = useRef<boolean>(false);
+
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      // Ignore touch moves so finger touches/drags don't trigger mouse hover inactivity resets
-      if (e.pointerType === 'touch') return;
+      if (e.pointerType === 'touch') {
+        isTouchInteractionRef.current = true;
+        return;
+      }
+      isTouchInteractionRef.current = false;
       triggerActivity();
     },
     [triggerActivity]
   );
 
-  const handleOverlayClick = useCallback(
+  const handleBackdropAction = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      // If the tap was on a button, input slider, dropdown menu item, or interactive control, do not dismiss
+      // If clicking interactive control (buttons, sliders, dropdown items), do nothing here
       if (target.closest('button, input, select, textarea, [role="button"], a, .interactive-control')) {
         return;
       }
-      dismissControls();
+
+      const native = e.nativeEvent as any;
+      const isTouch =
+        native?.pointerType === 'touch' ||
+        native?.sourceCapabilities?.firesTouchEvents === true ||
+        isTouchInteractionRef.current ||
+        (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && native?.pointerType !== 'mouse');
+
+      if (isTouch) {
+        // Touch (finger tap): only dismiss or reveal controls
+        if (showControls) {
+          dismissControls();
+        } else {
+          triggerActivity();
+        }
+      } else {
+        // Physical mouse click: play / pause standard viewer behavior
+        togglePlay();
+      }
     },
-    [dismissControls]
+    [showControls, dismissControls, triggerActivity, togglePlay]
   );
 
   // 11. Lock Body Scroll & Prevent Background Scroll Leaks
@@ -556,6 +580,16 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   return (
     <div
       ref={containerRef}
+      onPointerDown={(e) => {
+        if (e.pointerType === 'touch') {
+          isTouchInteractionRef.current = true;
+        } else if (e.pointerType === 'mouse') {
+          isTouchInteractionRef.current = false;
+        }
+      }}
+      onTouchStart={() => {
+        isTouchInteractionRef.current = true;
+      }}
       onPointerMove={handlePointerMove}
       className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden overscroll-none"
     >
@@ -571,7 +605,12 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         }}
         onWaiting={() => setLoading(true)}
         onPlaying={() => setLoading(false)}
-        onClick={toggleControls}
+        onClick={handleBackdropAction}
+        onDoubleClick={() => {
+          if (!isTouchInteractionRef.current) {
+            toggleFullscreen();
+          }
+        }}
         playsInline
         className="w-full h-full object-contain cursor-pointer"
       />
@@ -623,7 +662,12 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
       {/* Modern Netflix-Grade UI Controls Overlay */}
       <div
-        onClick={handleOverlayClick}
+        onClick={handleBackdropAction}
+        onDoubleClick={() => {
+          if (!isTouchInteractionRef.current) {
+            toggleFullscreen();
+          }
+        }}
         className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] sm:p-8 transition-opacity duration-300 z-30 ${
           showControls ? 'opacity-100 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}

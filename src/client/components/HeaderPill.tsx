@@ -85,6 +85,9 @@ export function HeaderPill({
       }
       if (e.key === 'Escape') {
         if (isSearching) {
+          e.preventDefault();
+          e.stopPropagation();
+          inputRef.current?.blur();
           setIsSearching(false);
         }
       }
@@ -92,6 +95,43 @@ export function HeaderPill({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSearching]);
+
+  // Lock background body scroll when search is active & preserve scroll position
+  useEffect(() => {
+    if (!isSearching) return;
+
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    const preventTouch = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('.overflow-y-auto')) return;
+      if (e.cancelable) e.preventDefault();
+    };
+
+    const preventWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('.overflow-y-auto')) return;
+      e.preventDefault();
+    };
+
+    document.addEventListener('touchmove', preventTouch, { passive: false });
+    document.addEventListener('wheel', preventWheel, { passive: false });
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+      document.removeEventListener('touchmove', preventTouch);
+      document.removeEventListener('wheel', preventWheel);
+      if (window.scrollY !== scrollY) {
+        window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+      }
+    };
   }, [isSearching]);
 
   // Click Outside to Dismiss
@@ -123,7 +163,7 @@ export function HeaderPill({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={() => setIsSearching(false)}
-            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm touch-none overscroll-none"
           />
         )}
       </AnimatePresence>
