@@ -225,7 +225,6 @@ export function App() {
         onClose={() => setIsQueueOpen(false)}
         activeRequests={activeRequests}
         onRefresh={refreshQueue}
-        onPlayMedia={setPlayingMedia}
       />
 
       {/* 6. Custom Netflix-Grade HLS Video Player */}

@@ -1,7 +1,6 @@
 import React from 'react';
-import { X, ListVideo, CheckCircle2, AlertTriangle, Loader2, Play, RefreshCw, Clock } from 'lucide-react';
+import { X, ListVideo, AlertTriangle, RefreshCw, Clock } from 'lucide-react';
 import type { UserActiveMediaState } from '../../main/types/index.js';
-import type { PlayingMediaInfo } from '../types/ui.js';
 import { parseDisplayFileId } from '../utils/formatters.js';
 
 interface QueueDrawerProps {
@@ -9,7 +8,6 @@ interface QueueDrawerProps {
   onClose: () => void;
   activeRequests: Record<string, UserActiveMediaState>;
   onRefresh: () => void;
-  onPlayMedia: (info: PlayingMediaInfo) => void;
 }
 
 export function QueueDrawer({
@@ -17,20 +15,13 @@ export function QueueDrawer({
   onClose,
   activeRequests,
   onRefresh,
-  onPlayMedia,
 }: QueueDrawerProps) {
   if (!isOpen) return null;
 
-  const items = Object.values(activeRequests);
+  const items = Object.values(activeRequests).filter((item) => item.status !== 'ready');
 
   const getStatusBadge = (status: UserActiveMediaState['status']) => {
     switch (status) {
-      case 'ready':
-        return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Ready
-          </span>
-        );
       case 'failed':
         return (
           <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
@@ -43,13 +34,10 @@ export function QueueDrawer({
             <Clock className="w-3 h-3 text-amber-400" /> Queued
           </span>
         );
+      case 'ready':
       case 'preparing':
       default:
-        return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
-            <Loader2 className="w-3 h-3 animate-spin text-indigo-400" /> Preparing
-          </span>
-        );
+        return null;
     }
   };
 
@@ -137,28 +125,6 @@ export function QueueDrawer({
                       />
                     </div>
                   </div>
-
-                  {/* If ready, play button */}
-                  {item.status === 'ready' && (
-                    <button
-                      onClick={() => {
-                        onPlayMedia({
-                          fileId: item.fileId,
-                          mediaId: info.mediaId,
-                          title: info.title,
-                          subtitle: info.subtitle,
-                          season: info.season,
-                          episode: info.episode,
-                          type: info.isEpisode ? 'show' : 'movie',
-                        });
-                        onClose();
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Watch Now</span>
-                    </button>
-                  )}
                 </div>
               );
             })

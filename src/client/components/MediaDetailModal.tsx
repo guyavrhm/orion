@@ -104,7 +104,7 @@ export function MediaDetailModal({
               <div className="flex items-center gap-2 text-xs text-zinc-300">
                 {current.year && <span className="font-mono font-bold">{current.year}</span>}
                 <RatingBadge rating={current.rating} size="sm" />
-                <span className="text-zinc-400">• {episodes.length} Total Episodes</span>
+                <span className="text-zinc-400">{episodes.length} Total Episodes</span>
               </div>
             )}
           </div>
