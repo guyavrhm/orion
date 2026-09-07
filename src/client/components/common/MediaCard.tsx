@@ -1,6 +1,7 @@
 import React from 'react';
 import { Film, Tv, Check, Play, Loader2, Clock } from 'lucide-react';
 import type { UserActiveMediaState } from '../../main/types/index.js';
+import { ImageWithSkeleton } from './ImageWithSkeleton.js';
 
 interface MediaCardProps {
   title: string;
@@ -43,18 +44,17 @@ export function MediaCard({
     >
       {/* Poster with aspect ratio */}
       <div className="aspect-[2/3] w-full rounded-xl overflow-hidden bg-zinc-900 mb-2 relative flex items-center justify-center">
-        {poster ? (
-          <img
-            src={poster}
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
-            {isMovie ? <Film className="w-8 h-8 mb-1" /> : <Tv className="w-8 h-8 mb-1" />}
-            <span className="text-[10px] uppercase font-mono">{isMovie ? 'Movie' : 'Show'}</span>
-          </div>
-        )}
+        <ImageWithSkeleton
+          src={poster}
+          alt={title}
+          className="group-hover:scale-105 transition-transform duration-300"
+          fallback={
+            <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+              {isMovie ? <Film className="w-8 h-8 mb-1" /> : <Tv className="w-8 h-8 mb-1" />}
+              <span className="text-[10px] uppercase font-mono">{isMovie ? 'Movie' : 'Show'}</span>
+            </div>
+          }
+        />
 
         {/* Optional Play hover trigger */}
         {onPlayDirect && isReady && (

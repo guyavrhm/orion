@@ -16,6 +16,7 @@ import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 
 // Views & Pages
 import { ExploreView } from './views/ExploreView.js';
+import { ExploreSkeleton } from './views/ExploreSkeleton.js';
 import { MediaDetailView } from './views/MediaDetailView.js';
 
 // Core UI Components
@@ -224,9 +225,8 @@ export function App() {
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
       <main className="flex-1 transition-all">
         {loading ? (
-          <div className="min-h-[60vh] pt-28 flex flex-col items-center justify-center gap-4">
-            <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-semibold tracking-wide text-zinc-400">Loading Orion Catalog...</span>
+          <div className="pt-16 sm:pt-20">
+            <ExploreSkeleton />
           </div>
         ) : selectedMedia ? (
           <MediaDetailView

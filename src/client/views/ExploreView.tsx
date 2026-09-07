@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Play, Info, RotateCcw, Film, Tv } from 'luci
 import type { MovieMetadata, ShowMetadata, Progress, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
+import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
 import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
 interface MediaCarouselRowProps {
@@ -152,13 +153,12 @@ export function ExploreView({
             className="md:col-span-2 relative h-80 sm:h-96 rounded-3xl overflow-hidden glass-panel border border-zinc-800 p-6 sm:p-8 flex flex-col justify-between group cursor-pointer transition-all duration-300"
           >
             <div className="absolute inset-0 -z-10 bg-zinc-950">
-              {heroMovie.background || heroMovie.poster ? (
-                <img
-                  src={heroMovie.background || heroMovie.poster || ''}
-                  alt={heroMovie.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-40"
-                />
-              ) : null}
+              <ImageWithSkeleton
+                src={heroMovie.background || heroMovie.poster}
+                alt={heroMovie.title}
+                priority={true}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-40"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
             </div>
 
@@ -205,13 +205,12 @@ export function ExploreView({
             className="relative h-80 sm:h-96 rounded-3xl overflow-hidden glass-panel border border-zinc-800 p-6 flex flex-col justify-between group cursor-pointer transition-all duration-300"
           >
             <div className="absolute inset-0 -z-10 bg-zinc-950">
-              {heroShow.background || heroShow.poster ? (
-                <img
-                  src={heroShow.background || heroShow.poster || ''}
-                  alt={heroShow.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-40"
-                />
-              ) : null}
+              <ImageWithSkeleton
+                src={heroShow.background || heroShow.poster}
+                alt={heroShow.title}
+                priority={true}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-40"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
             </div>
 

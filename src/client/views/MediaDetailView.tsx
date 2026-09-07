@@ -10,6 +10,8 @@ import type {
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient } from '../services/api.js';
 import { StreamActionButton } from '../components/common/StreamActionButton.js';
+import { Skeleton } from '../components/common/Skeleton.js';
+import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
 import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
 interface MediaDetailViewProps {
@@ -258,13 +260,12 @@ export function MediaDetailView({
     <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
       {/* 1. Full-Bleed Cinematic Hero Banner */}
       <div className="relative w-full h-[45vh] sm:h-[55vh] min-h-[380px] max-h-[580px] bg-zinc-950 overflow-hidden">
-        {current.background || current.poster ? (
-          <img
-            src={current.background || current.poster || ''}
-            alt={current.title}
-            className="w-full h-full object-cover object-center opacity-40 scale-105 animate-in fade-in duration-700"
-          />
-        ) : null}
+        <ImageWithSkeleton
+          src={current.background || current.poster}
+          alt={current.title}
+          priority={true}
+          className="w-full h-full object-cover object-center opacity-40 scale-105"
+        />
 
         {/* Ambient Gradients for smooth fade into page */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
@@ -443,7 +444,26 @@ export function MediaDetailView({
 
             {/* Episode Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {currentSeasonEpisodes.map((ep) => {
+              {currentSeasonEpisodes.length === 0 && !isFetchCompleted ? (
+                [1, 2, 3, 4, 5, 6].map((i) => (
+                  <div
+                    key={`ep-skeleton-${i}`}
+                    className="p-4 rounded-3xl bg-zinc-900/40 border border-zinc-800/60 flex flex-col justify-between space-y-3"
+                  >
+                    <Skeleton className="w-full aspect-video rounded-2xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-3/4 rounded-md" />
+                      <Skeleton className="h-3 w-full rounded-md" />
+                      <Skeleton className="h-3 w-2/3 rounded-md" />
+                    </div>
+                    <div className="pt-2 border-t border-zinc-800/50 flex items-center justify-between">
+                      <Skeleton className="h-3 w-12 rounded-md" />
+                      <Skeleton className="h-7 w-20 rounded-xl" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                currentSeasonEpisodes.map((ep) => {
                 const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
                 const isEpReady = !!mergedReadyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
                 const epReq = activeRequests[epFileId];
@@ -478,20 +498,19 @@ export function MediaDetailView({
                         isEpReady ? 'group/thumb cursor-pointer' : ''
                       }`}
                     >
-                      {ep.thumbnail ? (
-                        <img
-                          src={ep.thumbnail}
-                          alt={ep.title}
-                          className={`w-full h-full object-cover transition-transform duration-300 ${
-                            isEpReady ? 'group-hover/thumb:scale-105' : ''
-                          }`}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
-                          <Tv className="w-6 h-6 mb-1" />
-                          <span className="text-[10px] font-mono">EP {ep.episode}</span>
-                        </div>
-                      )}
+                      <ImageWithSkeleton
+                        src={ep.thumbnail}
+                        alt={ep.title}
+                        className={`w-full h-full object-cover transition-transform duration-300 ${
+                          isEpReady ? 'group-hover/thumb:scale-105' : ''
+                        }`}
+                        fallback={
+                          <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                            <Tv className="w-6 h-6 mb-1" />
+                            <span className="text-[10px] font-mono">EP {ep.episode}</span>
+                          </div>
+                        }
+                      />
 
                       {/* Ready Play circle overlay on hover */}
                       {isEpReady && (
@@ -568,7 +587,7 @@ export function MediaDetailView({
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           </section>
         )}

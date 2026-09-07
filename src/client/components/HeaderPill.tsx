@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
+import { ImageWithSkeleton } from './common/ImageWithSkeleton.js';
 
 interface HeaderPillProps {
   onSelectMedia: (media: MovieMetadata | ShowMetadata) => void;
@@ -227,17 +228,15 @@ export function HeaderPill({
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Poster Thumbnail */}
                         <div className="w-10 h-14 rounded-xl bg-zinc-800 overflow-hidden flex-shrink-0">
-                          {item.poster ? (
-                            <img
-                              src={item.poster}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                              {isMovie ? <Film className="w-5 h-5" /> : <Tv className="w-5 h-5" />}
-                            </div>
-                          )}
+                          <ImageWithSkeleton
+                            src={item.poster}
+                            alt={item.title}
+                            fallback={
+                              <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                                {isMovie ? <Film className="w-5 h-5" /> : <Tv className="w-5 h-5" />}
+                              </div>
+                            }
+                          />
                         </div>
 
                         {/* Title & Metadata */}
