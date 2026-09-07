@@ -7,6 +7,16 @@ import { normalizeRawMovieMetadata, normalizeRawShowMetadata } from './cinemeta.
 
 const METAHUB_API = 'https://www.metahub.space/api';
 
+function getMetahubHeaders(): Record<string, string> {
+  const randomIp = `${Math.floor(Math.random() * 200) + 10}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
+  return {
+    'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'X-Forwarded-For': randomIp
+  };
+}
+
 export class MetahubClient {
   /**
    * Searches media using Metahub search.
@@ -17,7 +27,9 @@ export class MetahubClient {
     try {
       const searchUrl = `${METAHUB_API}/search?q=${encodeURIComponent(query)}`;
       logger.info(`Querying search on Metahub: ${searchUrl}`);
-      const resp = await fetchWithTimeout(searchUrl);
+      const resp = await fetchWithTimeout(searchUrl, {
+        headers: getMetahubHeaders()
+      });
       if (!resp.ok) {
         throw new BadGatewayError(ErrorCode.SERVICE_ERROR);
       }

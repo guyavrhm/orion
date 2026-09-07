@@ -54,7 +54,14 @@ describe('MetahubClient', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://www.metahub.space/api/search?q=Night%20of%20the%20Living%20Dead',
-        expect.objectContaining({ signal: expect.any(AbortSignal) })
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+          headers: expect.objectContaining({
+            'User-Agent': expect.stringContaining('Mozilla/5.0'),
+            'Accept': 'application/json, text/plain, */*',
+            'X-Forwarded-For': expect.stringMatching(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)
+          })
+        })
       );
       expect(results).toHaveLength(2);
       expect(results[0].id).toBe('tt0063350');
