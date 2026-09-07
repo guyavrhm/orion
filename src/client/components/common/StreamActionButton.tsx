@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play, PlusCircle, Loader2, Clock } from 'lucide-react';
+import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 
 interface StreamActionButtonProps {
@@ -59,21 +60,29 @@ export function StreamActionButton({
 
   if (isReady) {
     return (
-      <button
+      <motion.button
+        type="button"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         onClick={onPlay}
-        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition cursor-pointer shadow-lg shadow-red-950/40 ${sizeClasses[size]} ${className}`}
+        className={`inline-flex items-center bg-red-600 hover:bg-red-500 text-white transition-colors cursor-pointer shadow-lg shadow-red-950/40 ${sizeClasses[size]} ${className}`}
       >
         <Play className={`${iconSizes[size]} fill-current`} />
         <span>Play</span>
-      </button>
+      </motion.button>
     );
   }
 
   return (
-    <button
+    <motion.button
+      type="button"
+      whileHover={{ scale: isRequesting ? 1 : 1.02 }}
+      whileTap={{ scale: isRequesting ? 1 : 0.96 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       onClick={onRequest}
       disabled={isRequesting}
-      className={`inline-flex items-center glass-panel bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 border border-white/10 backdrop-blur-md transition cursor-pointer disabled:opacity-50 ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center glass-panel bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 border border-white/10 backdrop-blur-md transition-colors cursor-pointer disabled:opacity-50 ${sizeClasses[size]} ${className}`}
     >
       {isRequesting ? (
         <Loader2 className={`${iconSizes[size]} animate-spin`} />
@@ -81,6 +90,6 @@ export function StreamActionButton({
         <PlusCircle className={iconSizes[size]} />
       )}
       <span>{isRequesting ? 'Requesting...' : 'Request'}</span>
-    </button>
+    </motion.button>
   );
 }

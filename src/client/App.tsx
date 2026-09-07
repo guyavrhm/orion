@@ -13,6 +13,7 @@ import { useSSE } from './hooks/useSSE.js';
 import { parseDisplayFileId, getFriendlyErrorMessage } from './utils/formatters.js';
 
 import { AlertCircle, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Views & Pages
 import { ExploreView } from './views/ExploreView.js';
@@ -243,7 +244,7 @@ export function App() {
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
-      <main className="flex-1 transition-all">
+      <main className="flex-1">
         {loading ? (
           <div className="pt-16 sm:pt-20">
             <ExploreSkeleton />
@@ -277,14 +278,25 @@ export function App() {
       </main>
 
       {/* 4. Custom Netflix-Grade HLS Video Player */}
-      {playingMedia && (
-        <HlsPlayer
-          media={playingMedia}
-          initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
-          onClose={() => setPlayingMedia(null)}
-          onProgressUpdate={handleProgressUpdate}
-        />
-      )}
+      <AnimatePresence>
+        {playingMedia && (
+          <motion.div
+            key="hls-player-overlay"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-50 bg-black"
+          >
+            <HlsPlayer
+              media={playingMedia}
+              initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
+              onClose={() => setPlayingMedia(null)}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

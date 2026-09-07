@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Tv, Play, Check, Star, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -26,6 +27,43 @@ interface MediaDetailViewProps {
   onCacheMediaDetails?: (media: MovieMetadata | ShowMetadata) => void;
 }
 
+function resolveTargetSeasonAndEpisode(
+  media: MovieMetadata | ShowMetadata,
+  progressMap: Record<string, Progress> = {},
+  activeRequests: Record<string, UserActiveMediaState> = {},
+  extraProg: Record<string, Progress> = {}
+): { season: number; episode: number | null } {
+  if (media.type !== 'show') {
+    return { season: 1, episode: null };
+  }
+
+  const mergedProg = { ...extraProg, ...progressMap };
+  const showProgEntries = Object.entries(mergedProg)
+    .filter(([k, v]) => v && (v.show_id === media.id || k.startsWith(`${media.id}_s`)))
+    .map(([k, v]) => {
+      const parsed = parseDisplayFileId(k);
+      const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
+      return { key: k, parsed, lastUpdated };
+    });
+
+  const activeReqEntries = Object.entries(activeRequests)
+    .filter(([k]) => k.startsWith(`${media.id}_s`))
+    .map(([k, v]) => {
+      const parsed = parseDisplayFileId(k);
+      const lastUpdated = v.updatedAt || 0;
+      return { key: k, parsed, lastUpdated };
+    });
+
+  const combined = [...showProgEntries, ...activeReqEntries]
+    .filter((e) => e.parsed.season && e.parsed.episode)
+    .sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+  if (combined.length > 0) {
+    return { season: combined[0].parsed.season, episode: combined[0].parsed.episode };
+  }
+  return { season: 1, episode: null };
+}
+
 export function MediaDetailView({
   media,
   progressMap,
@@ -39,10 +77,14 @@ export function MediaDetailView({
 }: MediaDetailViewProps) {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
-  const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [selectedSeason, setSelectedSeason] = useState<number>(() => {
+    return resolveTargetSeasonAndEpisode(media, progressMap, activeRequests).season;
+  });
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
   const [useDropdown, setUseDropdown] = useState(false);
-  const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(null);
+  const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(() => {
+    return resolveTargetSeasonAndEpisode(media, progressMap, activeRequests).episode;
+  });
   const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
   const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
@@ -74,47 +116,9 @@ export function MediaDetailView({
     setLocalReady({});
     setIsFetchCompleted(isCached);
 
-    const resolveTarget = (extraProg: Record<string, Progress> = {}) => {
-      const mergedProg = { ...extraProg, ...progressMap };
-      const showProgEntries = Object.entries(mergedProg)
-        .filter(([k, v]) => v && (v.show_id === media.id || k.startsWith(`${media.id}_s`)))
-        .map(([k, v]) => {
-          const parsed = parseDisplayFileId(k);
-          const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
-          return { key: k, parsed, lastUpdated };
-        });
-
-      const activeReqEntries = Object.entries(activeRequests)
-        .filter(([k]) => k.startsWith(`${media.id}_s`))
-        .map(([k, v]) => {
-          const parsed = parseDisplayFileId(k);
-          const lastUpdated = v.updatedAt || 0;
-          return { key: k, parsed, lastUpdated };
-        });
-
-      const combined = [...showProgEntries, ...activeReqEntries]
-        .filter((e) => e.parsed.season && e.parsed.episode)
-        .sort((a, b) => b.lastUpdated - a.lastUpdated);
-
-      if (combined.length > 0) {
-        return { season: combined[0].parsed.season, episode: combined[0].parsed.episode };
-      }
-      return null;
-    };
-
-    if (media.type === 'show') {
-      const target = resolveTarget();
-      if (target) {
-        setSelectedSeason(target.season);
-        setTargetEpisodeNumber(target.episode);
-      } else {
-        setSelectedSeason(1);
-        setTargetEpisodeNumber(null);
-      }
-    } else {
-      setSelectedSeason(1);
-      setTargetEpisodeNumber(null);
-    }
+    const initialTarget = resolveTargetSeasonAndEpisode(media, progressMap, activeRequests);
+    setSelectedSeason(initialTarget.season);
+    setTargetEpisodeNumber(initialTarget.episode);
 
     if (media.type === 'movie') {
       if (!isCached && !media.description && !media.cast?.length) {
@@ -142,11 +146,9 @@ export function MediaDetailView({
             }
             if (res.progress) {
               setLocalProgress(res.progress);
-              const target = resolveTarget(res.progress);
-              if (target) {
-                setSelectedSeason(target.season);
-                setTargetEpisodeNumber(target.episode);
-              }
+              const target = resolveTargetSeasonAndEpisode(media, progressMap, activeRequests, res.progress);
+              setSelectedSeason(target.season);
+              setTargetEpisodeNumber(target.episode);
             }
             if (res.ready) setLocalReady(res.ready);
           })
@@ -171,7 +173,7 @@ export function MediaDetailView({
 
     if (isReadyToScroll && targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
       hasScrolledRef.current = true;
-      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'nearest' });
     }
   }, [selectedSeason, detailedMedia, targetEpisodeNumber, episodes.length, isMovie, media, isCached, isFetchCompleted]);
 
@@ -386,57 +388,75 @@ export function MediaDetailView({
                       />
                     </button>
 
-                    {showSeasonDropdown && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-30"
-                          onClick={() => setShowSeasonDropdown(false)}
-                        />
-                        <div className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
-                          <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
-                            {seasons.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedSeason(s);
-                                  setTargetEpisodeNumber(null);
-                                  setShowSeasonDropdown(false);
-                                }}
-                                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                  selectedSeason === s
-                                    ? 'bg-red-600 text-white'
-                                    : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                                }`}
-                              >
-                                <span>Season {s}</span>
-                                {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    <AnimatePresence>
+                      {showSeasonDropdown && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-30"
+                            onClick={() => setShowSeasonDropdown(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                            className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
+                          >
+                            <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
+                              {seasons.map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedSeason(s);
+                                    setTargetEpisodeNumber(null);
+                                    setShowSeasonDropdown(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    selectedSeason === s
+                                      ? 'bg-red-600 text-white'
+                                      : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  <span>Season {s}</span>
+                                  {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto scrollbar-none flex-shrink-0">
-                    {seasons.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSeason(s);
-                          setTargetEpisodeNumber(null);
-                        }}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                          selectedSeason === s
-                            ? 'bg-red-600 text-white shadow-md'
-                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                        }`}
-                      >
-                        Season {s}
-                      </button>
-                    ))}
+                    {seasons.map((s) => {
+                      const isActive = selectedSeason === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSeason(s);
+                            setTargetEpisodeNumber(null);
+                          }}
+                          className={`relative px-4 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
+                            isActive
+                              ? 'text-white'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeSeasonIndicator"
+                              className="absolute inset-0 bg-red-600 rounded-xl shadow-md"
+                              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                            />
+                          )}
+                          <span className="relative z-10">Season {s}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )
               )}

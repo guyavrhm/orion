@@ -1,5 +1,6 @@
 import React from 'react';
 import { Film, Tv, Check, Play, Loader2, Clock } from 'lucide-react';
+import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../main/types/index.js';
 import { ImageWithSkeleton } from './ImageWithSkeleton.js';
 
@@ -38,9 +39,12 @@ export function MediaCard({
   const shouldShowCheck = isReady && (showReadyBadge || isMovie);
 
   return (
-    <div
+    <motion.div
       onClick={onClick}
-      className={`group relative rounded-2xl overflow-hidden glass-panel border border-zinc-800 hover:border-zinc-700 p-2.5 transition-all duration-200 cursor-pointer transform hover:-translate-y-1 ${className}`}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      className={`group relative rounded-2xl overflow-hidden glass-panel border border-zinc-800 hover:border-zinc-700 p-2.5 cursor-pointer ${className}`}
     >
       {/* Poster with aspect ratio */}
       <div className="aspect-[2/3] w-full rounded-xl overflow-hidden bg-zinc-900 mb-2 relative flex items-center justify-center">
@@ -108,6 +112,6 @@ export function MediaCard({
       <div className="flex items-center text-[10px] text-zinc-400 mt-0.5">
         <span>{subtitle || year || (isMovie ? 'Movie' : 'Show')}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
