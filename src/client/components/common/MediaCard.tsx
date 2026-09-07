@@ -1,11 +1,12 @@
 import React from 'react';
-import { Film, Tv, CheckCircle2, Play } from 'lucide-react';
+import { Film, Tv, Check, Play } from 'lucide-react';
 
 interface MediaCardProps {
   title: string;
   poster?: string | null;
   type: 'movie' | 'show';
   year?: string | null;
+  subtitle?: string | null;
   isReady?: boolean;
   progressPercent?: number;
   onClick: () => void;
@@ -18,6 +19,7 @@ export function MediaCard({
   poster,
   type,
   year,
+  subtitle,
   isReady = false,
   progressPercent = 0,
   onClick,
@@ -61,10 +63,10 @@ export function MediaCard({
           </div>
         )}
 
-        {/* Ready checkmark badge */}
-        {isReady && (
-          <span className="absolute top-1.5 right-1.5 p-1 rounded-md bg-emerald-500 text-white">
-            <CheckCircle2 className="w-3 h-3" />
+        {/* Ready checkmark badge - only for movies */}
+        {isReady && isMovie && (
+          <span className="absolute top-1.5 right-1.5 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center">
+            <Check className="w-3 h-3 stroke-[2.5]" />
           </span>
         )}
 
@@ -85,7 +87,7 @@ export function MediaCard({
       </h4>
 
       <div className="flex items-center text-[10px] text-zinc-400 mt-0.5">
-        <span>{year || (isMovie ? 'Movie' : 'Show')}</span>
+        <span>{subtitle || year || (isMovie ? 'Movie' : 'Show')}</span>
       </div>
     </div>
   );

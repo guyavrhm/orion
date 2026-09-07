@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, PlusCircle, Loader2, RotateCcw } from 'lucide-react';
+import { Play, PlusCircle, Loader2 } from 'lucide-react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 
 interface StreamActionButtonProps {
@@ -57,18 +57,8 @@ export function StreamActionButton({
         onClick={onPlay}
         className={`inline-flex items-center bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer ${sizeClasses[size]} ${className}`}
       >
-        {hasProgress ? (
-          <RotateCcw className={iconSizes[size]} />
-        ) : (
-          <Play className={`${iconSizes[size]} fill-current`} />
-        )}
-        <span>
-          {hasProgress
-            ? progressTimestampFormatted
-              ? `Resume (${progressTimestampFormatted})`
-              : 'Resume'
-            : 'Watch'}
-        </span>
+        <Play className={`${iconSizes[size]} fill-current`} />
+        <span>Play</span>
       </button>
     );
   }

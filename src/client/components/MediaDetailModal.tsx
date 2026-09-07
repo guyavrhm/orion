@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, RotateCcw, Tv } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Clock, Tv, Play, Check } from 'lucide-react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -12,7 +12,7 @@ import { ApiClient } from '../services/api.js';
 import { BaseModal } from './common/BaseModal.js';
 import { RatingBadge } from './common/RatingBadge.js';
 import { StreamActionButton } from './common/StreamActionButton.js';
-import { formatTime, calculateProgressPercent } from '../utils/formatters.js';
+import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
 interface MediaDetailModalProps {
   media: MovieMetadata | ShowMetadata | null;
@@ -36,14 +36,39 @@ export function MediaDetailModal({
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata | null>(media);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(null);
   const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
   const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
+  const activeEpisodeCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!media) return;
     setDetailedMedia(media);
     setLocalProgress({});
     setLocalReady({});
+
+    // Check if media already has an episode (e.g. from continue watching)
+    if (media.type === 'show') {
+      if ('episodes' in media && Array.isArray(media.episodes) && media.episodes.length > 0) {
+        if (media.episodes[0].season) setSelectedSeason(media.episodes[0].season);
+        if (media.episodes[0].episode) setTargetEpisodeNumber(media.episodes[0].episode);
+      } else {
+        const showProgKeys = Object.entries(progressMap)
+          .filter(([k, v]) => k.startsWith(`${media.id}_s`) && v && v.last_updated)
+          .sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
+        if (showProgKeys.length > 0) {
+          const parsed = parseDisplayFileId(showProgKeys[0][0]);
+          if (parsed.season) setSelectedSeason(parsed.season);
+          if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
+        } else {
+          setSelectedSeason(1);
+          setTargetEpisodeNumber(null);
+        }
+      }
+    } else {
+      setSelectedSeason(1);
+      setTargetEpisodeNumber(null);
+    }
 
     if (media.type === 'movie') {
       // Only fetch details if basic fields are missing (e.g. from partial search stub)
@@ -60,12 +85,28 @@ export function MediaDetailModal({
       ApiClient.getShowDetails(media.id)
         .then((res) => {
           if (res.metadata) setDetailedMedia(res.metadata as ShowMetadata);
-          if (res.progress) setLocalProgress(res.progress);
+          if (res.progress) {
+            setLocalProgress(res.progress);
+            const progEntries = Object.entries(res.progress).filter(([k, v]) => v && v.last_updated);
+            if (progEntries.length > 0) {
+              progEntries.sort((a, b) => (b[1].last_updated || 0) - (a[1].last_updated || 0));
+              const latestKey = progEntries[0][0];
+              const parsed = parseDisplayFileId(latestKey);
+              if (parsed.season) setSelectedSeason(parsed.season);
+              if (parsed.episode) setTargetEpisodeNumber(parsed.episode);
+            }
+          }
           if (res.ready) setLocalReady(res.ready);
         })
         .catch(() => {});
     }
   }, [media]);
+
+  useEffect(() => {
+    if (activeEpisodeCardRef.current) {
+      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedSeason, detailedMedia, targetEpisodeNumber]);
 
   if (!media) return null;
 
@@ -165,12 +206,6 @@ export function MediaDetailModal({
                 {current.runtime}m
               </span>
             )}
-            {movieProg && movieProg.timestamp > 0 && (
-              <span className="flex items-center gap-1 text-indigo-400 font-bold px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 font-mono">
-                <RotateCcw className="w-3 h-3 text-indigo-400" />
-                {formatTime(movieProg.timestamp)} watched ({Math.round(moviePercent)}%)
-              </span>
-            )}
             {current.genres?.map((g) => (
               <span
                 key={g}
@@ -216,7 +251,6 @@ export function MediaDetailModal({
               activeRequest={movieReq}
               isRequesting={requestingId === movieFileId}
               hasProgress={Boolean(movieProg && movieProg.timestamp > 0)}
-              progressTimestampFormatted={movieProg ? formatTime(movieProg.timestamp) : undefined}
               size="md"
               onPlay={() => {
                 onPlayMedia({
@@ -247,18 +281,42 @@ export function MediaDetailModal({
                 const epReq = activeRequests[epFileId];
                 const epProg = mergedProgressMap[epFileId];
                 const epPercent = calculateProgressPercent(epProg);
+                const isTargetEpisode = targetEpisodeNumber === ep.episode;
 
                 return (
                   <div
                     key={ep.id}
+                    ref={isTargetEpisode ? activeEpisodeCardRef : undefined}
                     className="p-4 rounded-3xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col justify-between space-y-3"
                   >
-                    <div className="w-full aspect-video rounded-2xl overflow-hidden bg-zinc-950 relative border border-white/10">
+                    <div
+                      onClick={() => {
+                        if (isEpReady) {
+                          onPlayMedia({
+                            fileId: epFileId,
+                            mediaId: current.id,
+                            title: current.title,
+                            subtitle: `S${ep.season}E${ep.episode} • ${ep.title}`,
+                            type: 'show',
+                            season: ep.season,
+                            episode: ep.episode,
+                            poster: ep.thumbnail || current.poster,
+                            background: current.background,
+                          });
+                          onClose();
+                        }
+                      }}
+                      className={`w-full aspect-video rounded-2xl overflow-hidden bg-zinc-950 relative border border-white/10 ${
+                        isEpReady ? 'group/thumb cursor-pointer' : ''
+                      }`}
+                    >
                       {ep.thumbnail ? (
                         <img
                           src={ep.thumbnail}
                           alt={ep.title}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover transition-transform duration-300 ${
+                            isEpReady ? 'group-hover/thumb:scale-105' : ''
+                          }`}
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
@@ -266,6 +324,23 @@ export function MediaDetailModal({
                           <span className="text-[10px] font-mono">EP {ep.episode}</span>
                         </div>
                       )}
+
+                      {/* Ready Play circle overlay on hover */}
+                      {isEpReady && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="p-3 rounded-full bg-indigo-600 text-white transform group-hover/thumb:scale-110 transition-transform shadow-lg">
+                            <Play className="w-4 h-4 fill-current ml-0.5" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ready checkmark badge */}
+                      {isEpReady && (
+                        <span className="absolute top-1.5 right-1.5 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center">
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                        </span>
+                      )}
+
                       {ep.runtime && (
                         <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300">
                           {ep.runtime}m

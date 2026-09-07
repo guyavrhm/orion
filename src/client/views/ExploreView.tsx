@@ -4,7 +4,7 @@ import type { MovieMetadata, ShowMetadata, Progress, Stream, UserActiveMediaStat
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
 import { RatingBadge } from '../components/common/RatingBadge.js';
-import { calculateProgressPercent } from '../utils/formatters.js';
+import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
 
 interface ExploreViewProps {
   movies: MovieMetadata[];
@@ -27,30 +27,35 @@ export function ExploreView({
   onSelectMedia,
   onPlayDirect,
 }: ExploreViewProps) {
+  // Hero Movie
   const heroMovie = movies[0];
-  const heroShow = shows[0];
-  const otherMovies = movies.slice(1);
-  const otherShows = shows.slice(1);
-
   const isHeroMovieReady = heroMovie
     ? !!readyMap[heroMovie.id] || activeRequests[heroMovie.id]?.status === 'ready'
     : false;
 
-  const isMediaReady = (item: MovieMetadata | ShowMetadata): boolean => {
+  // Helper to check ready status for any media item
+  const isMediaReady = (item: MovieMetadata | ShowMetadata) => {
     if (item.type === 'movie') {
       return !!readyMap[item.id] || activeRequests[item.id]?.status === 'ready';
     }
-    const show = item as ShowMetadata;
-    return (
-      !!readyMap[show.id] ||
-      activeRequests[show.id]?.status === 'ready' ||
-      (show.episodes?.some(
-        (ep) =>
-          !!readyMap[`${show.id}_s${ep.season}_e${ep.episode}`] ||
-          activeRequests[`${show.id}_s${ep.season}_e${ep.episode}`]?.status === 'ready'
-      ) ?? false)
-    );
+    // For show, check if the show or any of its episodes is marked ready
+    const hasShowStream =
+      !!readyMap[item.id] ||
+      activeRequests[item.id]?.status === 'ready' ||
+      ('episodes' in item &&
+        Array.isArray(item.episodes) &&
+        item.episodes.some(
+          (ep) =>
+            !!readyMap[`${item.id}_s${ep.season}_e${ep.episode}`] ||
+            activeRequests[`${item.id}_s${ep.season}_e${ep.episode}`]?.status === 'ready'
+        ));
+    return hasShowStream;
   };
+
+  // Featured TV Show
+  const heroShow = shows[0];
+  const otherMovies = movies.slice(1);
+  const otherShows = shows.slice(1);
 
   return (
     <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-8 py-8 pb-28 space-y-10 animate-in fade-in duration-300">
@@ -115,7 +120,7 @@ export function ExploreView({
                   className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
                 >
                   {isHeroMovieReady ? <Play className="w-4 h-4 fill-current" /> : <PlusCircle className="w-4 h-4" />}
-                  <span>{isHeroMovieReady ? 'Watch Movie' : 'Request'}</span>
+                  <span>{isHeroMovieReady ? 'Play' : 'Request'}</span>
                 </button>
               </div>
             </div>
@@ -170,7 +175,7 @@ export function ExploreView({
         )}
       </section>
 
-      {/* 2. Continue Watching Shelf (below heroes) */}
+      {/* 2. Continue Watching Shelf */}
       {continueWatching.length > 0 && (
         <section className="space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -188,6 +193,27 @@ export function ExploreView({
                 : (epId && progressMap[epId]) || Object.entries(progressMap).find(([k]) => k.startsWith(`${item.id}_s`))?.[1] || progressMap[item.id];
               const percent = calculateProgressPercent(progObj);
 
+              const showEpInfo = (() => {
+                if (isMovie) return null;
+                if (showEp && showEp.season && showEp.episode) {
+                  return { season: showEp.season, episode: showEp.episode };
+                }
+                const matchedKey = Object.keys(progressMap).find((k) => k.startsWith(`${item.id}_s`));
+                if (matchedKey) {
+                  const parsed = parseDisplayFileId(matchedKey);
+                  if (parsed.season && parsed.episode) {
+                    return { season: parsed.season, episode: parsed.episode };
+                  }
+                }
+                return null;
+              })();
+
+              const subtitle = isMovie 
+                ? item.year 
+                : showEpInfo 
+                  ? `S${showEpInfo.season} E${showEpInfo.episode}` 
+                  : (item.year || 'Show');
+
               return (
                 <MediaCard
                   key={`continue-${item.id}`}
@@ -196,6 +222,7 @@ export function ExploreView({
                   poster={item.poster}
                   type={item.type}
                   year={item.year}
+                  subtitle={subtitle}
                   isReady={isReady}
                   progressPercent={percent}
                   onClick={() => {

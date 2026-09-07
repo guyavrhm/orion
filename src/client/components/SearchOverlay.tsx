@@ -144,7 +144,7 @@ export function SearchOverlay({
                       <div className="flex items-center gap-2.5 text-xs text-zinc-400 mt-1.5">
                         <span className="font-mono">{item.year || 'N/A'}</span>
                         <RatingBadge rating={item.rating} size="sm" />
-                        {isReady && (
+                        {isReady && isMovie && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-lg border border-zinc-800">
                             <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Ready
                           </span>
