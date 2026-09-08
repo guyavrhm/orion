@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tv, Play, Check, Star, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -23,6 +23,7 @@ interface MediaDetailViewProps {
   readyMap: Record<string, Stream>;
   activeRequests: Record<string, UserActiveMediaState>;
   isCached?: boolean;
+  isActive?: boolean;
   onBack: () => void;
   onPlayMedia: (info: PlayingMediaInfo) => void;
   onRequestMedia: (fileId: string, episodeMeta?: EpisodeMetadata) => Promise<void>;
@@ -30,6 +31,7 @@ interface MediaDetailViewProps {
   onUpdateProgressMap?: (progress: Record<string, Progress>) => void;
   onUpdateReadyMap?: (ready: Record<string, Stream>) => void;
   onShowNavContextChange?: (ctx: HeaderPillShowContext | null) => void;
+  onDragProgress?: (progress: number) => void;
 }
 
 export function MediaDetailView({
@@ -38,6 +40,7 @@ export function MediaDetailView({
   readyMap,
   activeRequests,
   isCached = false,
+  isActive = true,
   onBack,
   onPlayMedia,
   onRequestMedia,
@@ -45,6 +48,7 @@ export function MediaDetailView({
   onUpdateProgressMap,
   onUpdateReadyMap,
   onShowNavContextChange,
+  onDragProgress,
 }: MediaDetailViewProps) {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
@@ -54,6 +58,20 @@ export function MediaDetailView({
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
   const activeSeasonItemRef = useRef<HTMLButtonElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Scroll to active season inside dropdown ONLY once when opened
   useEffect(() => {
@@ -67,11 +85,135 @@ export function MediaDetailView({
     }
   }, [showSeasonDropdown]);
 
-  // Scroll to top on mount / media change
+  // Scroll detail view to top on mount / media change (preserve background explore view scroll)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
     setUserSelectedSeason(null);
   }, [media.id]);
+
+  // Interactive Netflix/Disney+ Grade Drag-to-Dismiss gesture (Mobile Only)
+  const dragX = useMotionValue(0);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartYRef = useRef(0);
+  const isHorizontalGestureRef = useRef<boolean | null>(null);
+
+  // Synchronize dragProgress 1:1 with motion value
+  useEffect(() => {
+    const unsubscribe = dragX.on('change', (latestX) => {
+      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 375;
+      const progress = Math.min(1, Math.max(0, latestX / screenWidth));
+      onDragProgress?.(progress);
+    });
+    return () => {
+      unsubscribe();
+      onDragProgress?.(0);
+    };
+  }, [dragX, onDragProgress]);
+
+  useEffect(() => {
+    if (!isMobile || !isActive) {
+      dragX.set(0);
+      return;
+    }
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const clientX = e.touches[0].clientX;
+
+      // Restrict gesture initiation strictly to the far left edge of the screen (iOS/Netflix standard)
+      const maxEdgeDistance = 40;
+      if (clientX > maxEdgeDistance) return;
+
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('.overflow-x-auto, input, textarea, button, a, [role="button"]')) return;
+
+      const clientY = e.touches[0].clientY;
+
+      dragStartXRef.current = clientX;
+      dragStartYRef.current = clientY;
+      isHorizontalGestureRef.current = null;
+      isDraggingRef.current = true;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || e.touches.length !== 1) return;
+
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const deltaX = currentX - dragStartXRef.current;
+      const deltaY = currentY - dragStartYRef.current;
+
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      // Lock in gesture orientation on first significant movement
+      if (isHorizontalGestureRef.current === null) {
+        if (absX > 6 || absY > 6) {
+          // Must be strictly rightward from left edge AND horizontal-dominant (angle < 35 deg)
+          if (deltaX > 6 && deltaX > absY * 1.4) {
+            isHorizontalGestureRef.current = true;
+          } else {
+            // Predominantly vertical or leftward motion: yield to native vertical scroll permanently for this touch
+            isHorizontalGestureRef.current = false;
+            isDraggingRef.current = false;
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+
+      if (isHorizontalGestureRef.current && deltaX > 0) {
+        // Freeze native vertical page scroll when actively performing a horizontal dismiss swipe
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        dragX.set(deltaX);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+
+      const currentDrag = dragX.get();
+      const threshold = Math.min(130, window.innerWidth * 0.26);
+
+      if (isHorizontalGestureRef.current && currentDrag >= threshold) {
+        // Fluidly fling off screen to the right and call onBack()
+        animate(dragX, window.innerWidth, {
+          duration: 0.22,
+          ease: [0.32, 0.72, 0, 1],
+        }).then(() => {
+          onBack();
+        });
+      } else if (currentDrag > 0) {
+        // Spring smoothly back to original position
+        animate(dragX, 0, {
+          type: 'spring',
+          stiffness: 450,
+          damping: 32,
+        });
+      }
+
+      isHorizontalGestureRef.current = null;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isMobile, isActive, onBack, dragX]);
 
   // Dismiss season dropdown on Escape
   useEffect(() => {
@@ -248,15 +390,21 @@ export function MediaDetailView({
 
     // Calculate target position before DOM height changes from episode re-rendering
     if (headerRowRef.current) {
+      const container = scrollContainerRef.current;
       const rect = headerRowRef.current.getBoundingClientRect();
       const pillHeader = document.querySelector('header');
       const navBottom = pillHeader ? Math.round(pillHeader.getBoundingClientRect().bottom) : 64;
-      const targetY = Math.max(0, window.scrollY + rect.top - (navBottom + 12));
+      const currentScroll = container ? container.scrollTop : window.scrollY;
+      const targetY = Math.max(0, currentScroll + rect.top - (navBottom + 12));
 
       // Scroll if the user is scrolled past or at the episodes header
-      if (rect.top <= navBottom + 20 || window.scrollY > targetY) {
+      if (rect.top <= navBottom + 20 || currentScroll > targetY) {
         requestAnimationFrame(() => {
-          window.scrollTo({ top: targetY, behavior: 'smooth' });
+          if (container) {
+            container.scrollTo({ top: targetY, behavior: 'smooth' });
+          } else {
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+          }
         });
       }
     }
@@ -358,7 +506,21 @@ export function MediaDetailView({
   };
 
   return (
-    <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
+    <motion.div
+      ref={scrollContainerRef}
+      style={{ x: isMobile ? dragX : 0 }}
+      initial={isMobile ? { x: '100%' } : { opacity: 0 }}
+      animate={isMobile ? { x: 0 } : { opacity: 1 }}
+      exit={isMobile ? { x: '100%' } : { opacity: 0 }}
+      transition={
+        isMobile
+          ? { type: 'spring', damping: 32, stiffness: 350 }
+          : { duration: 0.2, ease: 'easeOut' }
+      }
+      className={`fixed inset-0 z-40 bg-zinc-950 overflow-y-auto overflow-x-hidden overscroll-contain text-zinc-100 pb-28 will-change-transform ${
+        isMobile ? 'shadow-[-20px_0_50px_rgba(0,0,0,0.8)] touch-pan-y' : ''
+      }`}
+    >
       {/* 1. Full-Bleed Cinematic Hero Banner */}
       <div className="relative w-full h-[58vh] sm:h-[60vh] min-h-[460px] sm:min-h-[500px] max-h-[640px] bg-zinc-950 overflow-hidden">
         <ImageWithSkeleton
@@ -691,7 +853,7 @@ export function MediaDetailView({
           </section>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

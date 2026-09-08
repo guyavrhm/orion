@@ -587,8 +587,15 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
           isTouchInteractionRef.current = false;
         }
       }}
-      onTouchStart={() => {
+      onTouchStart={(e) => {
         isTouchInteractionRef.current = true;
+        e.stopPropagation();
+      }}
+      onTouchMove={(e) => {
+        e.stopPropagation();
+      }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
       }}
       onPointerMove={handlePointerMove}
       className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden overscroll-none"

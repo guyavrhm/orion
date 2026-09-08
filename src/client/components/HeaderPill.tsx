@@ -22,6 +22,7 @@ interface HeaderPillProps {
   toast?: string | null;
   onClearToast?: () => void;
   showContext?: HeaderPillShowContext | null;
+  dragProgress?: number;
 }
 
 export function HeaderPill({
@@ -32,6 +33,7 @@ export function HeaderPill({
   toast,
   onClearToast,
   showContext = null,
+  dragProgress = 0,
 }: HeaderPillProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
@@ -222,7 +224,7 @@ export function HeaderPill({
       {/* Floating Header Pill Container (Uniform width & height in all states) */}
       <div
         ref={containerRef}
-        className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
+        className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-xl transition-all duration-300"
       >
         <header
           className={`flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 ${
@@ -312,9 +314,12 @@ export function HeaderPill({
                       <motion.div
                         key="pill-back-container"
                         initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 44 }}
+                        animate={{
+                          opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1,
+                          width: dragProgress > 0 ? Math.max(0, (1 - dragProgress) * 44) : 44,
+                        }}
                         exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                        transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
                         className="flex items-center overflow-hidden flex-shrink-0"
                       >
                         <div className="flex items-center gap-2 pr-2.5 flex-shrink-0">
@@ -340,9 +345,9 @@ export function HeaderPill({
                       <motion.div
                         key="show-brand-content"
                         initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
                         className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none min-w-0"
                       >
                         {showContext.logo && !logoError ? (
@@ -388,9 +393,9 @@ export function HeaderPill({
                     <motion.div
                       key="pill-season-trigger"
                       initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
                       className="relative flex-shrink-0"
                     >
                       <button

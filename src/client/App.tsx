@@ -41,6 +41,7 @@ export function App() {
   const [playingMedia, setPlayingMedia] = useState<PlayingMediaInfo | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showNavContext, setShowNavContext] = useState<HeaderPillShowContext | null>(null);
+  const [detailDragProgress, setDetailDragProgress] = useState<number>(0);
 
   // SSE Real-time Updates Hook
   const { activeRequests, setActiveRequests } = useSSE();
@@ -271,8 +272,30 @@ export function App() {
   // Scroll Restoration for Explore / Detail navigation
   const exploreScrollYRef = useRef<number>(0);
 
+  // Lock background body/html scroll when detail view or player is active
+  useEffect(() => {
+    if (!selectedMedia && !playingMedia) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      if (exploreScrollYRef.current > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
+        });
+      }
+    };
+  }, [Boolean(selectedMedia), Boolean(playingMedia)]);
+
   const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata) => {
     setShowNavContext(null);
+    setDetailDragProgress(0);
     if (!selectedMedia) {
       // Save current explore view scroll position before entering detail view
       exploreScrollYRef.current = window.scrollY;
@@ -283,10 +306,8 @@ export function App() {
 
   const handleBack = useCallback(() => {
     setShowNavContext(null);
+    setDetailDragProgress(0);
     setSelectedMedia(null);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
-    });
   }, []);
 
   return (
@@ -300,45 +321,61 @@ export function App() {
         toast={toast}
         onClearToast={() => setToast(null)}
         showContext={showNavContext}
+        dragProgress={selectedMedia ? detailDragProgress : 0}
       />
 
-      {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
+      {/* 2. Main Screen Area (Explore View + Stacked Media Detail Page) */}
       <main className="flex-1 overflow-x-hidden">
         {loading ? (
           <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">
             <ExploreSkeleton />
           </div>
-        ) : selectedMedia ? (
-          <MediaDetailView
-            media={selectedMedia}
-            progressMap={progressMap}
-            readyMap={readyMap}
-            activeRequests={activeRequests}
-            isCached={!!mediaDetailsCacheRef.current[selectedMedia.id]}
-            onBack={handleBack}
-            onPlayMedia={handlePlayMedia}
-            onRequestMedia={handleRequestMedia}
-            onCacheMediaDetails={handleCacheMediaDetails}
-            onUpdateProgressMap={handleUpdateProgressMap}
-            onUpdateReadyMap={handleUpdateReadyMap}
-            onShowNavContextChange={setShowNavContext}
-          />
         ) : (
-          <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">
-            <ExploreView
-              movies={movies}
-              shows={shows}
-              spotlightItems={spotlightItems}
-              heroIndex={heroIndex}
-              onHeroIndexChange={setHeroIndex}
-              continueWatching={continueWatching}
-              progressMap={progressMap}
-              readyMap={readyMap}
-              activeRequests={activeRequests}
-              onSelectMedia={handleSelectMedia}
-              onPlayDirect={handlePlayMedia}
-            />
-          </div>
+          <>
+            {/* Base Layer: Explore Screen (Always preserved underneath) */}
+            <div
+              className={`pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px] ${
+                selectedMedia ? 'pointer-events-none select-none' : ''
+              }`}
+            >
+              <ExploreView
+                movies={movies}
+                shows={shows}
+                spotlightItems={spotlightItems}
+                heroIndex={heroIndex}
+                onHeroIndexChange={setHeroIndex}
+                continueWatching={continueWatching}
+                progressMap={progressMap}
+                readyMap={readyMap}
+                activeRequests={activeRequests}
+                onSelectMedia={handleSelectMedia}
+                onPlayDirect={handlePlayMedia}
+              />
+            </div>
+
+            {/* Stacked Layer: Media Detail View Modal / Sheet */}
+            <AnimatePresence>
+              {selectedMedia && (
+                <MediaDetailView
+                  key={`media-detail-${selectedMedia.id}`}
+                  media={selectedMedia}
+                  progressMap={progressMap}
+                  readyMap={readyMap}
+                  activeRequests={activeRequests}
+                  isCached={!!mediaDetailsCacheRef.current[selectedMedia.id]}
+                  isActive={!playingMedia}
+                  onBack={handleBack}
+                  onPlayMedia={handlePlayMedia}
+                  onRequestMedia={handleRequestMedia}
+                  onCacheMediaDetails={handleCacheMediaDetails}
+                  onUpdateProgressMap={handleUpdateProgressMap}
+                  onUpdateReadyMap={handleUpdateReadyMap}
+                  onShowNavContextChange={setShowNavContext}
+                  onDragProgress={setDetailDragProgress}
+                />
+              )}
+            </AnimatePresence>
+          </>
         )}
       </main>
 
@@ -351,7 +388,7 @@ export function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-50 bg-black"
+            className="fixed inset-0 z-[60] bg-black"
           >
             <HlsPlayer
               media={playingMedia}
