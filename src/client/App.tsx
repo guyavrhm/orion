@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   MovieMetadata,
   ShowMetadata,
+  EpisodeMetadata,
   Progress,
   Stream,
 } from '../main/types/index.js';
@@ -102,7 +103,7 @@ export function App() {
   }, [toast]);
 
   // Request Media on-demand stream with optimistic update
-  const handleRequestMedia = async (fileId: string) => {
+  const handleRequestMedia = async (fileId: string, episodeMeta?: EpisodeMetadata) => {
     // 1. Optimistic immediate state update so user sees queued indicator instantly
     setActiveRequests((prev) => ({
       ...prev,
@@ -119,9 +120,22 @@ export function App() {
     const mediaItem = selectedMedia || movies.find((m) => m.id === parsed.mediaId) || shows.find((s) => s.id === parsed.mediaId);
     if (mediaItem) {
       const now = Date.now();
+      const updatedMediaItem =
+        mediaItem.type === 'show' && episodeMeta
+          ? {
+              ...mediaItem,
+              episodes: [
+                episodeMeta,
+                ...(((mediaItem as ShowMetadata).episodes || []).filter(
+                  (e: EpisodeMetadata) => !(e.season === episodeMeta.season && e.episode === episodeMeta.episode)
+                )),
+              ],
+            }
+          : mediaItem;
+
       setContinueWatching((prev) => {
         const filtered = prev.filter((item) => item.id !== mediaItem.id);
-        return [mediaItem, ...filtered];
+        return [updatedMediaItem, ...filtered];
       });
       setProgressMap((prev) => ({
         ...prev,
@@ -130,9 +144,9 @@ export function App() {
           fileId,
           show_id: parsed.isEpisode ? parsed.mediaId : null,
           timestamp: 0,
-          runtime: 0,
+          runtime: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
           progressPercent: 0,
-          duration: 0,
+          duration: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
           last_updated: now,
           updatedAt: new Date(now).toISOString(),
         },

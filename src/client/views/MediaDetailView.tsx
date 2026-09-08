@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type {
   MovieMetadata,
   ShowMetadata,
+  EpisodeMetadata,
   Progress,
   Stream,
   UserActiveMediaState,
@@ -23,7 +24,7 @@ interface MediaDetailViewProps {
   isCached?: boolean;
   onBack: () => void;
   onPlayMedia: (info: PlayingMediaInfo) => void;
-  onRequestMedia: (fileId: string) => Promise<void>;
+  onRequestMedia: (fileId: string, episodeMeta?: EpisodeMetadata) => Promise<void>;
   onCacheMediaDetails?: (media: MovieMetadata | ShowMetadata) => void;
 }
 
@@ -597,7 +598,7 @@ export function MediaDetailView({
                               }}
                               onRequest={() => {
                                 setRequestingId(epFileId);
-                                onRequestMedia(epFileId).finally(() => setRequestingId(null));
+                                onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
                               }}
                             />
                           </div>
