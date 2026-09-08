@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tv, Play, Check, Star, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type {
@@ -15,6 +15,7 @@ import { StreamActionButton } from '../components/common/StreamActionButton.js';
 import { Skeleton } from '../components/common/Skeleton.js';
 import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
 import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
+import type { HeaderPillShowContext } from '../components/HeaderPill.js';
 
 interface MediaDetailViewProps {
   media: MovieMetadata | ShowMetadata;
@@ -28,6 +29,7 @@ interface MediaDetailViewProps {
   onCacheMediaDetails?: (media: MovieMetadata | ShowMetadata) => void;
   onUpdateProgressMap?: (progress: Record<string, Progress>) => void;
   onUpdateReadyMap?: (ready: Record<string, Stream>) => void;
+  onShowNavContextChange?: (ctx: HeaderPillShowContext | null) => void;
 }
 
 export function MediaDetailView({
@@ -42,6 +44,7 @@ export function MediaDetailView({
   onCacheMediaDetails,
   onUpdateProgressMap,
   onUpdateReadyMap,
+  onShowNavContextChange,
 }: MediaDetailViewProps) {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
@@ -50,6 +53,19 @@ export function MediaDetailView({
   const [useDropdown, setUseDropdown] = useState(false);
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
+  const activeSeasonItemRef = useRef<HTMLButtonElement | null>(null);
+
+  // Scroll to active season inside dropdown ONLY once when opened
+  useEffect(() => {
+    if (showSeasonDropdown) {
+      requestAnimationFrame(() => {
+        activeSeasonItemRef.current?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'instant' as ScrollBehavior,
+        });
+      });
+    }
+  }, [showSeasonDropdown]);
 
   // Scroll to top on mount / media change
   useEffect(() => {
@@ -196,6 +212,79 @@ export function MediaDetailView({
   const globalTarget = getShowTargetEpisode(current.id, episodes, progressMap);
   const activeSeason = userSelectedSeason ?? globalTarget.season;
   const currentSeasonEpisodes = episodes.filter((e) => e.season === activeSeason);
+
+  const [isPastSeasonPicker, setIsPastSeasonPicker] = useState<boolean>(false);
+
+  // Native high-performance IntersectionObserver with dynamic navbar bottom measurement
+  useEffect(() => {
+    if (isMovie || seasons.length <= 1) {
+      setIsPastSeasonPicker(false);
+      return;
+    }
+
+    const headerEl = headerRowRef.current;
+    if (!headerEl || typeof IntersectionObserver === 'undefined') return;
+
+    // Measure exact rendered navbar bottom on this specific device
+    const pillHeader = document.querySelector('header');
+    const navBottom = pillHeader ? Math.round(pillHeader.getBoundingClientRect().bottom) : 64;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsPastSeasonPicker(entry.boundingClientRect.top <= navBottom && !entry.isIntersecting);
+      },
+      {
+        rootMargin: `-${navBottom}px 0px 0px 0px`,
+        threshold: 0,
+      }
+    );
+
+    observer.observe(headerEl);
+    return () => observer.disconnect();
+  }, [isMovie, seasons.length]);
+
+  const handleSelectSeason = useCallback((season: number) => {
+    setUserSelectedSeason(season);
+
+    // Calculate target position before DOM height changes from episode re-rendering
+    if (headerRowRef.current) {
+      const rect = headerRowRef.current.getBoundingClientRect();
+      const pillHeader = document.querySelector('header');
+      const navBottom = pillHeader ? Math.round(pillHeader.getBoundingClientRect().bottom) : 64;
+      const targetY = Math.max(0, window.scrollY + rect.top - (navBottom + 12));
+
+      // Scroll if the user is scrolled past or at the episodes header
+      if (rect.top <= navBottom + 20 || window.scrollY > targetY) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: targetY, behavior: 'smooth' });
+        });
+      }
+    }
+  }, []);
+
+  // Sync show navigation context to top HeaderPill
+  useEffect(() => {
+    if (isMovie || seasons.length <= 1) {
+      onShowNavContextChange?.(null);
+      return;
+    }
+
+    onShowNavContextChange?.({
+      title: current.title,
+      logo: current.logo,
+      seasons,
+      activeSeason,
+      onSelectSeason: handleSelectSeason,
+      isScrolledPast: isPastSeasonPicker,
+    });
+  }, [isMovie, seasons, activeSeason, isPastSeasonPicker, current.title, current.logo, handleSelectSeason, onShowNavContextChange]);
+
+  // Clear show nav context on unmount
+  useEffect(() => {
+    return () => {
+      onShowNavContextChange?.(null);
+    };
+  }, [onShowNavContextChange]);
 
   const activeSeasonNum = globalTarget.season;
   const activeEpisodeNum = globalTarget.episode;
@@ -390,21 +479,10 @@ export function MediaDetailView({
                               {seasons.map((s) => (
                                 <button
                                   key={s}
-                                  ref={
-                                    activeSeason === s
-                                      ? (el) => {
-                                          if (el) {
-                                            el.scrollIntoView({
-                                              block: 'nearest',
-                                              behavior: 'instant' as ScrollBehavior,
-                                            });
-                                          }
-                                        }
-                                      : null
-                                  }
+                                  ref={activeSeason === s ? activeSeasonItemRef : null}
                                   type="button"
                                   onClick={() => {
-                                    setUserSelectedSeason(s);
+                                    handleSelectSeason(s);
                                     setShowSeasonDropdown(false);
                                   }}
                                   className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
@@ -432,7 +510,7 @@ export function MediaDetailView({
                           key={s}
                           type="button"
                           onClick={() => {
-                            setUserSelectedSeason(s);
+                            handleSelectSeason(s);
                           }}
                           className={`relative px-4 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
                             isActive

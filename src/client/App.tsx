@@ -22,7 +22,7 @@ import { ExploreSkeleton } from './views/ExploreSkeleton.js';
 import { MediaDetailView } from './views/MediaDetailView.js';
 
 // Core UI Components
-import { HeaderPill } from './components/HeaderPill.js';
+import { HeaderPill, type HeaderPillShowContext } from './components/HeaderPill.js';
 import { HlsPlayer } from './components/HlsPlayer.js';
 
 export function App() {
@@ -40,6 +40,7 @@ export function App() {
   const [selectedMedia, setSelectedMedia] = useState<MovieMetadata | ShowMetadata | null>(null);
   const [playingMedia, setPlayingMedia] = useState<PlayingMediaInfo | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [showNavContext, setShowNavContext] = useState<HeaderPillShowContext | null>(null);
 
   // SSE Real-time Updates Hook
   const { activeRequests, setActiveRequests } = useSSE();
@@ -271,6 +272,7 @@ export function App() {
   const exploreScrollYRef = useRef<number>(0);
 
   const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata) => {
+    setShowNavContext(null);
     if (!selectedMedia) {
       // Save current explore view scroll position before entering detail view
       exploreScrollYRef.current = window.scrollY;
@@ -280,6 +282,7 @@ export function App() {
   }, [selectedMedia]);
 
   const handleBack = useCallback(() => {
+    setShowNavContext(null);
     setSelectedMedia(null);
     requestAnimationFrame(() => {
       window.scrollTo({ top: exploreScrollYRef.current, behavior: 'instant' as ScrollBehavior });
@@ -296,6 +299,7 @@ export function App() {
         activeRequests={activeRequests}
         toast={toast}
         onClearToast={() => setToast(null)}
+        showContext={showNavContext}
       />
 
       {/* 2. Main Screen Area (Explore View or Media Detail Page) */}
@@ -317,6 +321,7 @@ export function App() {
             onCacheMediaDetails={handleCacheMediaDetails}
             onUpdateProgressMap={handleUpdateProgressMap}
             onUpdateReadyMap={handleUpdateReadyMap}
+            onShowNavContextChange={setShowNavContext}
           />
         ) : (
           <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">

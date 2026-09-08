@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
 import { ImageWithSkeleton } from './common/ImageWithSkeleton.js';
+
+export interface HeaderPillShowContext {
+  title: string;
+  logo: string | null;
+  seasons: number[];
+  activeSeason: number;
+  onSelectSeason: (season: number) => void;
+  isScrolledPast: boolean;
+}
 
 interface HeaderPillProps {
   onSelectMedia: (media: MovieMetadata | ShowMetadata) => void;
@@ -12,6 +21,7 @@ interface HeaderPillProps {
   onBack?: () => void;
   toast?: string | null;
   onClearToast?: () => void;
+  showContext?: HeaderPillShowContext | null;
 }
 
 export function HeaderPill({
@@ -21,19 +31,59 @@ export function HeaderPill({
   onBack,
   toast,
   onClearToast,
+  showContext = null,
 }: HeaderPillProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<(MovieMetadata | ShowMetadata)[]>([]);
   const [searchResultsReady, setSearchResultsReady] = useState<Record<string, Stream>>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [showNavSeasonDropdown, setShowNavSeasonDropdown] = useState<boolean>(false);
+  const [logoError, setLogoError] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeNavSeasonItemRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [showContext?.logo]);
+
+  // Scroll to active season inside nav dropdown ONLY once when opened
+  useEffect(() => {
+    if (showNavSeasonDropdown) {
+      requestAnimationFrame(() => {
+        activeNavSeasonItemRef.current?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'instant' as ScrollBehavior,
+        });
+      });
+    }
+  }, [showNavSeasonDropdown]);
+
+  // Close nav season dropdown on Escape
+  useEffect(() => {
+    if (!showNavSeasonDropdown) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNavSeasonDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNavSeasonDropdown]);
+
+  // Close nav season dropdown if scrolled back up
+  useEffect(() => {
+    if (!showContext?.isScrolledPast) {
+      setShowNavSeasonDropdown(false);
+    }
+  }, [showContext?.isScrolledPast]);
 
   // Focus & select input once when opening search
   useEffect(() => {
     if (isSearching) {
+      setShowNavSeasonDropdown(false);
       const timer = setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -139,6 +189,7 @@ export function HeaderPill({
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsSearching(false);
+        setShowNavSeasonDropdown(false);
       }
     };
 
@@ -168,7 +219,7 @@ export function HeaderPill({
         )}
       </AnimatePresence>
 
-      {/* Floating Header Pill Container (Uniform width & height in both states) */}
+      {/* Floating Header Pill Container (Uniform width & height in all states) */}
       <div
         ref={containerRef}
         className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-xl transition-all duration-300"
@@ -245,7 +296,7 @@ export function HeaderPill({
                 </button>
               </motion.div>
             ) : (
-              /* Clean Initial State: Optional Back Button + Divider + Logo on left, Search on right */
+              /* Clean Initial State / Show Navigation Morph: Left Brand + Right Action */
               <motion.div
                 key="brand-mode"
                 initial={{ opacity: 0 }}
@@ -254,8 +305,8 @@ export function HeaderPill({
                 transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="flex-1 flex items-center justify-between min-w-0 h-full"
               >
-                {/* Left: Dynamic Back button + Divider + Sliding Brand Icon */}
-                <div className="flex items-center">
+                {/* Left: Dynamic Back button + Divider + (Orion Brand OR Show Logo/Title) */}
+                <div className="flex items-center min-w-0 flex-1 mr-2">
                   <AnimatePresence initial={false}>
                     {onBack && (
                       <motion.div
@@ -284,33 +335,147 @@ export function HeaderPill({
                     )}
                   </AnimatePresence>
 
-                  <div className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none flex-shrink-0">
-                    <div className="w-6 h-6 flex items-center justify-center">
-                      <img
-                        src="/assets/images/orion-nobackground.png"
-                        alt="Orion"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <span className="text-xs font-black tracking-wider text-white">
-                      ORION
-                    </span>
-                  </div>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {showContext?.isScrolledPast && showContext.seasons.length > 1 ? (
+                      <motion.div
+                        key="show-brand-content"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none min-w-0"
+                      >
+                        {showContext.logo && !logoError ? (
+                          <img
+                            src={showContext.logo}
+                            alt={showContext.title}
+                            onError={() => setLogoError(true)}
+                            className="max-h-5 max-w-[130px] sm:max-w-[200px] object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs font-black tracking-wide text-white truncate">
+                            {showContext.title}
+                          </span>
+                        )}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="orion-brand-content"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none flex-shrink-0"
+                      >
+                        <div className="w-6 h-6 flex items-center justify-center">
+                          <img
+                            src="/assets/images/orion-nobackground.png"
+                            alt="Orion"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <span className="text-xs font-black tracking-wider text-white">
+                          ORION
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* Right: Search Icon Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsSearching(true)}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
-                  title="Search (⌘K)"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
+                {/* Right: Search Icon Button OR Morphed Season Picker Dropdown Trigger */}
+                <AnimatePresence mode="wait" initial={false}>
+                  {showContext?.isScrolledPast && showContext.seasons.length > 1 ? (
+                    <motion.div
+                      key="pill-season-trigger"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="relative flex-shrink-0"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowNavSeasonDropdown((prev) => !prev);
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          showNavSeasonDropdown
+                            ? 'bg-white/10 text-white'
+                            : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                        }`}
+                        title="Select Season"
+                      >
+                        <span>Season {showContext.activeSeason}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                            showNavSeasonDropdown ? 'rotate-180 text-white' : 'group-hover:text-white'
+                          }`}
+                        />
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.button
+                      key="pill-search-trigger"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      type="button"
+                      onClick={() => setIsSearching(true)}
+                      className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
+                      title="Search (⌘K)"
+                    >
+                      <Search className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
         </header>
+
+        {/* Season Picker Dropdown anchored to Nav Pill */}
+        <AnimatePresence>
+          {showNavSeasonDropdown && showContext?.isScrolledPast && showContext.seasons.length > 1 && (
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setShowNavSeasonDropdown(false)}
+              />
+              <motion.div
+                key="nav-season-dropdown"
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="absolute right-0 top-14 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
+              >
+                <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
+                  {showContext.seasons.map((s) => (
+                    <button
+                      key={s}
+                      ref={showContext.activeSeason === s ? activeNavSeasonItemRef : null}
+                      type="button"
+                      onClick={() => {
+                        showContext.onSelectSeason(s);
+                        setShowNavSeasonDropdown(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        showContext.activeSeason === s
+                          ? 'bg-red-600 text-white'
+                          : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span>Season {s}</span>
+                      {showContext.activeSeason === s && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Dropdown Results Anchored to Pill */}
         <AnimatePresence>
