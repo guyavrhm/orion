@@ -208,6 +208,66 @@ export function MediaDetailView({
   const targetEpReq = activeRequests[targetEpFileId];
   const targetEpProg = progressMap[targetEpFileId];
 
+  // Helper renderer for primary StreamActionButton
+  const renderActionButton = (size: 'md' | 'lg' = 'lg', className = '') => {
+    if (isMovie) {
+      return (
+        <StreamActionButton
+          isReady={isMovieReady}
+          activeRequest={movieReq}
+          isRequesting={requestingId === movieFileId}
+          hasProgress={Boolean(movieProg && movieProg.timestamp > 0)}
+          size={size}
+          className={className}
+          onPlay={() => {
+            onPlayMedia({
+              fileId: movieFileId,
+              mediaId: current.id,
+              title: current.title,
+              type: 'movie',
+              poster: current.poster,
+              background: current.background,
+            });
+          }}
+          onRequest={() => {
+            setRequestingId(movieFileId);
+            onRequestMedia(movieFileId).finally(() => setRequestingId(null));
+          }}
+        />
+      );
+    }
+
+    return (
+      <StreamActionButton
+        isReady={isTargetEpReady}
+        activeRequest={targetEpReq}
+        isRequesting={requestingId === targetEpFileId}
+        hasProgress={Boolean(targetEpProg && targetEpProg.timestamp > 0)}
+        size={size}
+        className={className}
+        onPlay={() => {
+          onPlayMedia({
+            fileId: targetEpFileId,
+            mediaId: current.id,
+            title: current.title,
+            subtitle: targetEpMeta?.title
+              ? `S${activeSeasonNum}:E${activeEpisodeNum} "${targetEpMeta.title}"`
+              : `S${activeSeasonNum}:E${activeEpisodeNum}`,
+            type: 'show',
+            season: activeSeasonNum,
+            episode: activeEpisodeNum,
+            poster: targetEpMeta?.thumbnail || current.poster,
+            background: current.background,
+          });
+        }}
+        onRequest={() => {
+          setRequestingId(targetEpFileId);
+          onRequestMedia(targetEpFileId, targetEpMeta).finally(() => setRequestingId(null));
+        }}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
       {/* 1. Full-Bleed Cinematic Hero Banner */}
@@ -225,7 +285,7 @@ export function MediaDetailView({
         <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/70 via-transparent to-transparent h-32" />
 
         {/* Hero Title & Primary Metadata Overlay */}
-        <div className="absolute bottom-6 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 z-10 max-w-5xl space-y-3">
+        <div className="absolute bottom-6 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 z-10 max-w-5xl space-y-3.5">
           {current.logo ? (
             <img
               src={current.logo}
@@ -254,88 +314,37 @@ export function MediaDetailView({
 
       {/* 2. Main Content Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-8 mt-4">
-        {/* Synopsis & Cast */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-2">
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Overview</h3>
-            <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-3xl">
-              {current.description || 'No detailed overview available for this title.'}
-            </p>
+        {/* Primary Play / Request Action Area */}
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
+          <div className="w-full sm:w-auto">
+            {renderActionButton('lg', 'w-full sm:w-auto justify-center')}
           </div>
-
-          {current.cast && current.cast.length > 0 && (
-            <div className="space-y-3 p-5 rounded-2xl glass-panel bg-zinc-900/60 border border-white/10 backdrop-blur-md">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Starring</h4>
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                {current.cast.slice(0, 10).join(', ')}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Primary Play / Request Action Button */}
-        {isMovie ? (
-          <div className="pt-2 flex items-center gap-4">
-            <StreamActionButton
-              isReady={isMovieReady}
-              activeRequest={movieReq}
-              isRequesting={requestingId === movieFileId}
-              hasProgress={Boolean(movieProg && movieProg.timestamp > 0)}
-              size="lg"
-              onPlay={() => {
-                onPlayMedia({
-                  fileId: movieFileId,
-                  mediaId: current.id,
-                  title: current.title,
-                  type: 'movie',
-                  poster: current.poster,
-                  background: current.background,
-                });
-              }}
-              onRequest={() => {
-                setRequestingId(movieFileId);
-                onRequestMedia(movieFileId).finally(() => setRequestingId(null));
-              }}
-            />
-          </div>
-        ) : (
-          <div className="pt-2 flex items-center gap-3.5 flex-wrap">
-            <StreamActionButton
-              isReady={isTargetEpReady}
-              activeRequest={targetEpReq}
-              isRequesting={requestingId === targetEpFileId}
-              hasProgress={Boolean(targetEpProg && targetEpProg.timestamp > 0)}
-              size="lg"
-              onPlay={() => {
-                onPlayMedia({
-                  fileId: targetEpFileId,
-                  mediaId: current.id,
-                  title: current.title,
-                  subtitle: targetEpMeta?.title
-                    ? `S${activeSeasonNum}:E${activeEpisodeNum} "${targetEpMeta.title}"`
-                    : `S${activeSeasonNum}:E${activeEpisodeNum}`,
-                  type: 'show',
-                  season: activeSeasonNum,
-                  episode: activeEpisodeNum,
-                  poster: targetEpMeta?.thumbnail || current.poster,
-                  background: current.background,
-                });
-              }}
-              onRequest={() => {
-                setRequestingId(targetEpFileId);
-                onRequestMedia(targetEpFileId, targetEpMeta).finally(() => setRequestingId(null));
-              }}
-            />
-            <div className="text-sm sm:text-base font-bold text-zinc-300 truncate max-w-md sm:max-w-xl">
+          {!isMovie && (
+            <div className="text-xs sm:text-base font-bold text-zinc-300 truncate max-w-md sm:max-w-xl flex items-center gap-1.5 px-0.5">
               <span className="text-white">S{activeSeasonNum}:E{activeEpisodeNum}</span>
               {targetEpMeta?.title && (
-                <span className="text-zinc-400 font-medium ml-1.5">
+                <span className="text-zinc-400 font-medium truncate">
                   "{targetEpMeta.title}"
                 </span>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Overview & Starring Block */}
+        <div className="space-y-3 max-w-4xl">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Overview</h3>
+          <p className="text-sm sm:text-base text-zinc-300 leading-relaxed">
+            {current.description || 'No detailed overview available for this title.'}
+          </p>
+
+          {current.cast && current.cast.length > 0 && (
+            <div className="pt-1 text-xs sm:text-sm text-zinc-400 leading-relaxed font-medium">
+              <span className="text-zinc-300 font-bold mr-1.5">Starring:</span>
+              <span>{current.cast.slice(0, 10).join(', ')}</span>
+            </div>
+          )}
+        </div>
 
         {/* 3. TV Show Episode Browser */}
         {!isMovie && (
