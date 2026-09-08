@@ -11,6 +11,11 @@ interface MediaSessionOptions {
 
 export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: MediaSessionOptions) {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const callbacksRef = useRef({ onPlay, onPause, onSeek });
+
+  useEffect(() => {
+    callbacksRef.current = { onPlay, onPause, onSeek };
+  });
 
   // 1. Screen Wake Lock
   useEffect(() => {
@@ -51,7 +56,14 @@ export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: M
     };
   }, [isPlaying]);
 
-  // 2. Media Session API
+  // 2. Playback State Synchronization
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [isPlaying]);
+
+  // 3. Media Session API Metadata & Action Handlers
   useEffect(() => {
     if (!('mediaSession' in navigator) || !media) return;
 
@@ -73,13 +85,17 @@ export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: M
       artwork,
     });
 
-    navigator.mediaSession.setActionHandler('play', onPlay);
-    navigator.mediaSession.setActionHandler('pause', onPause);
+    navigator.mediaSession.setActionHandler('play', () => {
+      callbacksRef.current.onPlay();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      callbacksRef.current.onPause();
+    });
     navigator.mediaSession.setActionHandler('seekforward', (details) => {
-      onSeek(details.seekOffset || 10);
+      callbacksRef.current.onSeek(details.seekOffset || 10);
     });
     navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-      onSeek(-(details.seekOffset || 10));
+      callbacksRef.current.onSeek(-(details.seekOffset || 10));
     });
 
     return () => {
@@ -95,5 +111,5 @@ export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: M
         }
       }
     };
-  }, [media, onPlay, onPause, onSeek]);
+  }, [media?.fileId, media?.mediaId, media?.title, media?.subtitle, media?.poster, media?.background]);
 }

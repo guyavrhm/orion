@@ -109,12 +109,25 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     if (!video || !streamInfo) return;
 
     const streamUrl = streamInfo.url;
+    let mediaErrorCount = 0;
+    let networkErrorCount = 0;
 
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        backBufferLength: 90,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1024 * 1024,
+        maxBufferHole: 0.5,
+        highBufferWatchdogPeriod: 2,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 5,
+        fragLoadingTimeOut: 20000,
+        fragLoadingMaxRetry: 4,
+        levelLoadingTimeOut: 20000,
+        levelLoadingMaxRetry: 4,
       });
 
       hlsRef.current = hls;
@@ -156,37 +169,78 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              setError('Fatal playback error encountered.');
-              break;
+        if (!data.fatal) {
+          if (data.details === Hls.ErrorDetails.BUFFER_FULL_ERROR) {
+            const v = videoRef.current;
+            if (v && hlsRef.current && v.currentTime > 15) {
+              hlsRef.current.trigger(Hls.Events.BUFFER_FLUSHING, {
+                startOffset: 0,
+                endOffset: v.currentTime - 10,
+                type: undefined,
+              });
+            }
           }
+          return;
+        }
+
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            if (networkErrorCount < 3) {
+              networkErrorCount++;
+              hls.startLoad();
+            } else {
+              hls.destroy();
+              setError('Network connection lost. Please check your network.');
+            }
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            if (mediaErrorCount === 0) {
+              mediaErrorCount++;
+              hls.recoverMediaError();
+            } else if (mediaErrorCount === 1) {
+              mediaErrorCount++;
+              hls.swapAudioCodec();
+              hls.recoverMediaError();
+            } else {
+              hls.destroy();
+              setError('Fatal media playback error encountered.');
+            }
+            break;
+          default:
+            hls.destroy();
+            setError('Fatal playback error encountered.');
+            break;
         }
       });
 
       return () => {
         hls.destroy();
         hlsRef.current = null;
+        if (video) {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        }
       };
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native Safari HLS
       video.src = streamUrl;
-      video.addEventListener('loadedmetadata', () => {
+      const onLoadedMetadata = () => {
         setLoading(false);
         if (initialTimestampRef.current > 0) {
           video.currentTime = initialTimestampRef.current;
           initialTimestampRef.current = 0;
         }
         video.play().catch(() => {});
-      });
+      };
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      };
     } else {
       setError('HLS playback is not supported on this browser.');
       setLoading(false);
@@ -330,20 +384,33 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   }, [showControls, dismissControls, triggerActivity]);
 
   // 8. Player Actions
+  const playMedia = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.play().catch(() => {});
+    setIsPlaying(true);
+    triggerActivity();
+  }, [triggerActivity]);
+
+  const pauseMedia = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.pause();
+    setIsPlaying(false);
+    flushProgress();
+    triggerActivity();
+  }, [flushProgress, triggerActivity]);
+
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
     if (video.paused) {
-      video.play().catch(() => {});
-      setIsPlaying(true);
+      playMedia();
     } else {
-      video.pause();
-      setIsPlaying(false);
-      flushProgress();
+      pauseMedia();
     }
-    triggerActivity();
-  }, [flushProgress, triggerActivity]);
+  }, [playMedia, pauseMedia]);
 
   const seek = useCallback(
     (seconds: number) => {
@@ -407,64 +474,95 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   useMediaSession({
     media,
     isPlaying,
-    onPlay: () => togglePlay(),
-    onPause: () => togglePlay(),
+    onPlay: playMedia,
+    onPause: pauseMedia,
     onSeek: (offset) => seek(offset),
   });
 
   // 10. Global Keyboard Shortcuts
+  const keyboardActionsRef = useRef({
+    togglePlay,
+    seek,
+    changeVolume,
+    toggleMute,
+    toggleFullscreen,
+    volume,
+    activeSubtitleLang,
+    streamInfo,
+    showSubtitleMenu,
+    showSettingsMenu,
+    handleClose,
+  });
+
+  useEffect(() => {
+    keyboardActionsRef.current = {
+      togglePlay,
+      seek,
+      changeVolume,
+      toggleMute,
+      toggleFullscreen,
+      volume,
+      activeSubtitleLang,
+      streamInfo,
+      showSubtitleMenu,
+      showSettingsMenu,
+      handleClose,
+    };
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const actions = keyboardActionsRef.current;
 
       switch (e.code) {
         case 'Space':
         case 'KeyK':
           e.preventDefault();
-          togglePlay();
+          actions.togglePlay();
           break;
         case 'ArrowLeft':
         case 'KeyJ':
           e.preventDefault();
-          seek(-10);
+          actions.seek(-10);
           break;
         case 'ArrowRight':
         case 'KeyL':
           e.preventDefault();
-          seek(10);
+          actions.seek(10);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          changeVolume(Math.min(1, volume + 0.1));
+          actions.changeVolume(Math.min(1, actions.volume + 0.1));
           break;
         case 'ArrowDown':
           e.preventDefault();
-          changeVolume(Math.max(0, volume - 0.1));
+          actions.changeVolume(Math.max(0, actions.volume - 0.1));
           break;
         case 'KeyM':
           e.preventDefault();
-          toggleMute();
+          actions.toggleMute();
           break;
         case 'KeyF':
           e.preventDefault();
-          toggleFullscreen();
+          actions.toggleFullscreen();
           break;
         case 'KeyC':
           e.preventDefault();
           // Toggle subtitle off or first available
-          if (activeSubtitleLang) {
+          if (actions.activeSubtitleLang) {
             setActiveSubtitleLang(null);
-          } else if (streamInfo?.subtitles && streamInfo.subtitles.length > 0) {
-            setActiveSubtitleLang(streamInfo.subtitles[0].lang);
+          } else if (actions.streamInfo?.subtitles && actions.streamInfo.subtitles.length > 0) {
+            setActiveSubtitleLang(actions.streamInfo.subtitles[0].lang);
           }
           break;
         case 'Escape':
           e.preventDefault();
-          if (showSubtitleMenu || showSettingsMenu) {
+          if (actions.showSubtitleMenu || actions.showSettingsMenu) {
             setShowSubtitleMenu(false);
             setShowSettingsMenu(false);
           } else {
-            handleClose();
+            actions.handleClose();
           }
           break;
       }
@@ -472,16 +570,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    togglePlay,
-    seek,
-    volume,
-    activeSubtitleLang,
-    streamInfo,
-    showSubtitleMenu,
-    showSettingsMenu,
-    handleClose,
-  ]);
+  }, []);
 
   const isTouchInteractionRef = useRef<boolean>(false);
 
@@ -877,7 +966,6 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
               step="any"
               value={currentTime}
               onChange={(e) => seekTo(parseFloat(e.target.value))}
-              onInput={(e) => seekTo(parseFloat((e.target as HTMLInputElement).value))}
               className="w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none"
               style={{
                 background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
@@ -905,7 +993,6 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                   step="0.01"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                  onInput={(e) => changeVolume(parseFloat((e.target as HTMLInputElement).value))}
                   className="w-16 sm:w-24 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none"
                 />
               </div>

@@ -46,6 +46,9 @@ export function Hero3DCarousel({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.defaultPrevented) return;
+      if (document.querySelector('video') || document.querySelector('[role="dialog"]')) return;
       if (e.key === 'ArrowLeft') navigate(-1);
       else if (e.key === 'ArrowRight') navigate(1);
     };
