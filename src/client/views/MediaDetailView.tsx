@@ -390,6 +390,18 @@ export function MediaDetailView({
                               {seasons.map((s) => (
                                 <button
                                   key={s}
+                                  ref={
+                                    activeSeason === s
+                                      ? (el) => {
+                                          if (el) {
+                                            el.scrollIntoView({
+                                              block: 'nearest',
+                                              behavior: 'instant' as ScrollBehavior,
+                                            });
+                                          }
+                                        }
+                                      : null
+                                  }
                                   type="button"
                                   onClick={() => {
                                     setUserSelectedSeason(s);
