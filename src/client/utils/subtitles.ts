@@ -38,6 +38,7 @@ export function parseTimestamp(str: string): number {
  */
 export function cleanSubtitleText(raw: string): string {
   return raw
+    .replace(/\{[^}]*\}/g, '') // Strips SSA/ASS override tags (e.g. {\an8}, {\pos(x,y)}, {\b1})
     .replace(/<[^>]+>/g, '') // Strips HTML / VTT tags (e.g., <i>, <b>, <c.yellow>, <v Speaker>)
     .replace(/&rlm;|&lrm;/gi, '') // Strips hidden direction markers if present
     .replace(/&amp;/g, '&')

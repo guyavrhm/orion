@@ -27,6 +27,12 @@ describe('client subtitles utility', () => {
       expect(cleanSubtitleText('<c.yellow>Yellow text</c>')).toBe('Yellow text');
     });
 
+    it('removes SSA and ASS override tags like {\\an8}', () => {
+      expect(cleanSubtitleText('{\\an8}Look at the top of the screen')).toBe('Look at the top of the screen');
+      expect(cleanSubtitleText('{\\pos(192,200)\\c&H00FFFF&}Colored text{\\r}')).toBe('Colored text');
+      expect(cleanSubtitleText('{\\b1}Bold{\\b0} and {\\i1}Italic{\\i0}')).toBe('Bold and Italic');
+    });
+
     it('decodes common HTML entities', () => {
       expect(cleanSubtitleText('You &amp; I &quot;Rock&quot; &#39;n&#39; Roll')).toBe('You & I "Rock" \'n\' Roll');
     });

@@ -644,12 +644,14 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
       {currentSubtitleText && !error && (
         <div
           className={`absolute left-4 right-4 flex justify-center pointer-events-none z-20 text-center transition-all duration-300 ease-out ${
-            showControls ? 'bottom-24 sm:bottom-32' : 'bottom-6 sm:bottom-12'
+            showControls
+              ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.25rem)] md:bottom-32'
+              : 'bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:bottom-12'
           }`}
           dir={isRtlText(currentSubtitleText) ? 'rtl' : 'ltr'}
         >
           <span
-            className="inline-block max-w-[88%] sm:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/80 backdrop-blur-[2px] shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
+            className="inline-block max-w-[88%] md:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/80 backdrop-blur-[2px] shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
             style={{
               fontSize: 'clamp(0.95rem, 3.2vmin, 2rem)',
               lineHeight: 1.35,
@@ -668,7 +670,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
             toggleFullscreen();
           }
         }}
-        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] sm:p-8 transition-opacity duration-300 z-30 ${
+        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] md:p-8 transition-opacity duration-300 z-30 ${
           showControls ? 'opacity-100 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
