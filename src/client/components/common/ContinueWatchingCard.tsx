@@ -59,14 +59,12 @@ export function ContinueWatchingCard({
         {/* Subtle Ambient Shadow Gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-        {/* Center Hover Play Button (when ready) */}
-        {isReady && (
+        {/* Center Hover Play Button (when ready and onPlayDirect is supported) */}
+        {isReady && onPlayDirect && (
           <div
             onClick={(e) => {
-              if (onPlayDirect) {
-                e.stopPropagation();
-                onPlayDirect();
-              }
+              e.stopPropagation();
+              onPlayDirect();
             }}
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]"
           >

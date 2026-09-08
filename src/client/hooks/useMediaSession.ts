@@ -69,7 +69,7 @@ export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: M
     navigator.mediaSession.metadata = new MediaMetadata({
       title: media.title,
       artist: 'Orion Media Streamer',
-      album: media.subtitle || (media.type === 'show' ? `Season ${media.season}, Ep ${media.episode}` : 'Movie'),
+      album: media.subtitle || (media.type === 'show' ? `S${media.season}:E${media.episode}` : 'Movie'),
       artwork,
     });
 

@@ -5,7 +5,7 @@ import type { PlayingMediaInfo } from '../types/ui.js';
 import { MediaCard } from '../components/common/MediaCard.js';
 import { ContinueWatchingCard } from '../components/common/ContinueWatchingCard.js';
 import { Hero3DCarousel } from '../components/common/Hero3DCarousel.js';
-import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
+import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
 
 interface MediaCarouselRowProps {
   title: string;
@@ -229,44 +229,17 @@ export function ExploreView({
               );
             }
 
-            // TV Show Handling: Find the latest active episode strictly by recent progress
-            const showProgressEntries = Object.entries(progressMap)
-              .filter(([k, v]) => v && (v.show_id === item.id || k.startsWith(`${item.id}_s`)))
-              .map(([k, v]) => {
-                const parsed = parseDisplayFileId(k);
-                const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
-                return { key: k, parsed, progress: v, lastUpdated };
-              })
-              .sort((a, b) => b.lastUpdated - a.lastUpdated);
+            // TV Show Handling: Unified target episode resolution
+            const showItem = item as ShowMetadata;
+            const target = getShowTargetEpisode(item.id, showItem.episodes || [], progressMap);
+            const epFileId = target.fileId;
+            const percent = calculateProgressPercent(progressMap[epFileId]);
+            const isReady = !!readyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
+            const activeRequest = activeRequests[epFileId];
 
-            const latestProgress = showProgressEntries[0];
-            const fallbackEp =
-              'episodes' in item && Array.isArray(item.episodes) && item.episodes.length > 0
-                ? item.episodes[0]
-                : null;
-
-            const activeEpFileId =
-              latestProgress?.key ||
-              (fallbackEp ? fallbackEp.id || `${item.id}_s${fallbackEp.season}_e${fallbackEp.episode}` : null);
-            const activeSeason = latestProgress?.parsed?.season || fallbackEp?.season || 1;
-            const activeEpisode = latestProgress?.parsed?.episode || fallbackEp?.episode || 1;
-            const activeProgObj = latestProgress?.progress || (activeEpFileId ? progressMap[activeEpFileId] : null);
-            const percent = calculateProgressPercent(activeProgObj);
-
-            const isReady = activeEpFileId
-              ? !!readyMap[activeEpFileId] || activeRequests[activeEpFileId]?.status === 'ready'
-              : false;
-
-            const activeRequest = activeEpFileId ? activeRequests[activeEpFileId] : undefined;
-
-            const epMeta =
-              ('episodes' in item && Array.isArray(item.episodes)
-                ? item.episodes.find((ep) => ep.season === activeSeason && ep.episode === activeEpisode)
-                : null) || fallbackEp;
-
-            const subtitle = epMeta?.title
-              ? `S${activeSeason}:E${activeEpisode} "${epMeta.title}"`
-              : `Season ${activeSeason} • Episode ${activeEpisode}`;
+            const subtitle = target.epMeta?.title
+              ? `S${target.season}:E${target.episode} "${target.epMeta.title}"`
+              : `S${target.season}:E${target.episode}`;
 
             return (
               <ContinueWatchingCard
@@ -274,30 +247,12 @@ export function ExploreView({
                 className="w-56 sm:w-72"
                 title={item.title}
                 subtitle={subtitle}
-                thumbnail={epMeta?.thumbnail || item.background || item.poster}
+                thumbnail={target.epMeta?.thumbnail || item.background || item.poster}
                 type="show"
                 progressPercent={percent}
                 isReady={isReady}
                 activeRequest={activeRequest}
                 onClick={() => onSelectMedia(item)}
-                onPlayDirect={
-                  isReady && activeEpFileId
-                    ? () =>
-                        onPlayDirect({
-                          fileId: activeEpFileId,
-                          mediaId: item.id,
-                          title: item.title,
-                          subtitle: epMeta?.title
-                            ? `S${activeSeason}E${activeEpisode}: ${epMeta.title}`
-                            : `S${activeSeason}E${activeEpisode}`,
-                          type: 'show',
-                          season: activeSeason,
-                          episode: activeEpisode,
-                          poster: epMeta?.thumbnail || item.poster,
-                          background: item.background,
-                        })
-                    : undefined
-                }
               />
             );
           })}

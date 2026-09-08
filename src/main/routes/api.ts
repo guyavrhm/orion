@@ -294,9 +294,10 @@ router.get('/api/queue', async (_req: Request, res: Response<QueueStateResponse>
   for (const [key, val] of Object.entries(activeMediaMap)) {
     const transformed = toUserMediaRequestStatus(val.status, val.progress);
     transformedMap[key] = {
-      ...val,
+      fileId: val.fileId,
       status: transformed.status,
-      progress: transformed.progress
+      progress: transformed.progress,
+      error: val.error
     };
   }
 

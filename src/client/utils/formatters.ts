@@ -2,7 +2,45 @@
  * UI formatters and calculation helpers.
  */
 
-import type { Progress } from '../../main/types/index.js';
+import type { Progress, EpisodeMetadata } from '../../main/types/index.js';
+
+export interface TargetEpisodeResult {
+  season: number;
+  episode: number;
+  epMeta: EpisodeMetadata | null;
+  fileId: string;
+}
+
+/**
+ * Deterministically resolves the active target episode for any show based on normalized progress.
+ */
+export function getShowTargetEpisode(
+  showId: string,
+  episodes: EpisodeMetadata[] = [],
+  progressMap: Record<string, Progress> = {}
+): TargetEpisodeResult {
+  const showProgEntries = Object.entries(progressMap)
+    .filter(([k, v]) => v && (v.show_id === showId || k.startsWith(`${showId}_s`)))
+    .map(([k, v]) => ({ key: k, parsed: parseDisplayFileId(k), lastUpdated: v.last_updated || 0 }))
+    .filter((e) => e.parsed.season && e.parsed.episode)
+    .sort((a, b) => b.lastUpdated - a.lastUpdated);
+
+  const targetSeason = showProgEntries.length > 0 ? showProgEntries[0].parsed.season! : (episodes[0]?.season ?? 1);
+  const targetEpisode = showProgEntries.length > 0 ? showProgEntries[0].parsed.episode! : (episodes[0]?.episode ?? 1);
+  const fileId = showProgEntries.length > 0 ? showProgEntries[0].key : `${showId}_s${targetSeason}_e${targetEpisode}`;
+
+  const epMeta =
+    episodes.find((e) => e.season === targetSeason && e.episode === targetEpisode) ||
+    episodes[0] ||
+    null;
+
+  return {
+    season: targetSeason,
+    episode: targetEpisode,
+    epMeta,
+    fileId,
+  };
+}
 
 /**
  * Formats seconds to mm:ss or hh:mm:ss string.
@@ -54,7 +92,7 @@ export function parseDisplayFileId(fileId: string) {
       isEpisode: true,
       mediaId: showId,
       title: showId,
-      subtitle: `Season ${season}, Episode ${episode}`,
+      subtitle: `S${season}:E${episode}`,
       season: Number(season),
       episode: Number(episode),
     };

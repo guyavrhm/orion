@@ -14,7 +14,7 @@ import { ApiClient } from '../services/api.js';
 import { StreamActionButton } from '../components/common/StreamActionButton.js';
 import { Skeleton } from '../components/common/Skeleton.js';
 import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
-import { calculateProgressPercent, parseDisplayFileId } from '../utils/formatters.js';
+import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
 
 interface MediaDetailViewProps {
   media: MovieMetadata | ShowMetadata;
@@ -26,43 +26,8 @@ interface MediaDetailViewProps {
   onPlayMedia: (info: PlayingMediaInfo) => void;
   onRequestMedia: (fileId: string, episodeMeta?: EpisodeMetadata) => Promise<void>;
   onCacheMediaDetails?: (media: MovieMetadata | ShowMetadata) => void;
-}
-
-function resolveTargetSeasonAndEpisode(
-  media: MovieMetadata | ShowMetadata,
-  progressMap: Record<string, Progress> = {},
-  activeRequests: Record<string, UserActiveMediaState> = {},
-  extraProg: Record<string, Progress> = {}
-): { season: number; episode: number | null } {
-  if (media.type !== 'show') {
-    return { season: 1, episode: null };
-  }
-
-  const mergedProg = { ...extraProg, ...progressMap };
-  const showProgEntries = Object.entries(mergedProg)
-    .filter(([k, v]) => v && (v.show_id === media.id || k.startsWith(`${media.id}_s`)))
-    .map(([k, v]) => {
-      const parsed = parseDisplayFileId(k);
-      const lastUpdated = v.last_updated || (v.updatedAt ? new Date(v.updatedAt).getTime() : 0) || 0;
-      return { key: k, parsed, lastUpdated };
-    });
-
-  const activeReqEntries = Object.entries(activeRequests)
-    .filter(([k]) => k.startsWith(`${media.id}_s`))
-    .map(([k, v]) => {
-      const parsed = parseDisplayFileId(k);
-      const lastUpdated = v.updatedAt || 0;
-      return { key: k, parsed, lastUpdated };
-    });
-
-  const combined = [...showProgEntries, ...activeReqEntries]
-    .filter((e) => e.parsed.season && e.parsed.episode)
-    .sort((a, b) => b.lastUpdated - a.lastUpdated);
-
-  if (combined.length > 0) {
-    return { season: combined[0].parsed.season, episode: combined[0].parsed.episode };
-  }
-  return { season: 1, episode: null };
+  onUpdateProgressMap?: (progress: Record<string, Progress>) => void;
+  onUpdateReadyMap?: (ready: Record<string, Stream>) => void;
 }
 
 export function MediaDetailView({
@@ -75,28 +40,21 @@ export function MediaDetailView({
   onPlayMedia,
   onRequestMedia,
   onCacheMediaDetails,
+  onUpdateProgressMap,
+  onUpdateReadyMap,
 }: MediaDetailViewProps) {
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
-  const [selectedSeason, setSelectedSeason] = useState<number>(() => {
-    return resolveTargetSeasonAndEpisode(media, progressMap, activeRequests).season;
-  });
+  const [userSelectedSeason, setUserSelectedSeason] = useState<number | null>(null);
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
   const [useDropdown, setUseDropdown] = useState(false);
-  const [targetEpisodeNumber, setTargetEpisodeNumber] = useState<number | null>(() => {
-    return resolveTargetSeasonAndEpisode(media, progressMap, activeRequests).episode;
-  });
-  const [localProgress, setLocalProgress] = useState<Record<string, Progress>>({});
-  const [localReady, setLocalReady] = useState<Record<string, Stream>>({});
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
-  const activeEpisodeCardRef = useRef<HTMLDivElement | null>(null);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
-  const hasScrolledRef = useRef(false);
 
   // Scroll to top on mount / media change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    hasScrolledRef.current = false;
+    setUserSelectedSeason(null);
   }, [media.id]);
 
   // Dismiss season dropdown on Escape
@@ -113,13 +71,7 @@ export function MediaDetailView({
 
   useEffect(() => {
     setDetailedMedia(media);
-    setLocalProgress({});
-    setLocalReady({});
     setIsFetchCompleted(isCached);
-
-    const initialTarget = resolveTargetSeasonAndEpisode(media, progressMap, activeRequests);
-    setSelectedSeason(initialTarget.season);
-    setTargetEpisodeNumber(initialTarget.episode);
 
     if (media.type === 'movie') {
       if (!isCached && !media.description && !media.cast?.length) {
@@ -129,8 +81,8 @@ export function MediaDetailView({
               setDetailedMedia(res.metadata as MovieMetadata);
               onCacheMediaDetails?.(res.metadata);
             }
-            if (res.progress) setLocalProgress(res.progress);
-            if (res.ready) setLocalReady(res.ready);
+            if (res.progress) onUpdateProgressMap?.(res.progress);
+            if (res.ready) onUpdateReadyMap?.(res.ready);
           })
           .catch(() => {})
           .finally(() => setIsFetchCompleted(true));
@@ -145,13 +97,8 @@ export function MediaDetailView({
               setDetailedMedia(res.metadata as ShowMetadata);
               onCacheMediaDetails?.(res.metadata);
             }
-            if (res.progress) {
-              setLocalProgress(res.progress);
-              const target = resolveTargetSeasonAndEpisode(media, progressMap, activeRequests, res.progress);
-              setSelectedSeason(target.season);
-              setTargetEpisodeNumber(target.episode);
-            }
-            if (res.ready) setLocalReady(res.ready);
+            if (res.progress) onUpdateProgressMap?.(res.progress);
+            if (res.ready) onUpdateReadyMap?.(res.ready);
           })
           .catch(() => {})
           .finally(() => setIsFetchCompleted(true));
@@ -166,17 +113,6 @@ export function MediaDetailView({
   const showMeta = isMovie ? null : (current as ShowMetadata);
   const episodes = showMeta?.episodes || [];
   const seasons = Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
-  const currentSeasonEpisodes = episodes.filter((e) => e.season === selectedSeason);
-
-  // One-time auto-scroll to active episode card only if opening from Continue Watching / in-progress
-  useEffect(() => {
-    const isReadyToScroll = isMovie || isCached || isFetchCompleted || detailedMedia !== media;
-
-    if (isReadyToScroll && targetEpisodeNumber && !hasScrolledRef.current && activeEpisodeCardRef.current) {
-      hasScrolledRef.current = true;
-      activeEpisodeCardRef.current.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'nearest' });
-    }
-  }, [selectedSeason, detailedMedia, targetEpisodeNumber, episodes.length, isMovie, media, isCached, isFetchCompleted]);
 
   // Dynamic layout measurement: detect if season pills fit on the single header line
   useEffect(() => {
@@ -204,14 +140,11 @@ export function MediaDetailView({
     }
   }, [seasons.length]);
 
-  const mergedProgressMap = { ...progressMap, ...localProgress };
-  const mergedReadyMap = { ...readyMap, ...localReady };
-
   // Movie stream & progress calculation
   const movieFileId = current.id;
-  const isMovieReady = isMovie && (!!mergedReadyMap[movieFileId] || activeRequests[movieFileId]?.status === 'ready');
+  const isMovieReady = isMovie && (!!readyMap[movieFileId] || activeRequests[movieFileId]?.status === 'ready');
   const movieReq = activeRequests[movieFileId];
-  const movieProg = mergedProgressMap[movieFileId];
+  const movieProg = progressMap[movieFileId];
   const moviePercent = calculateProgressPercent(movieProg);
 
   // Clean editorial metadata elements
@@ -259,6 +192,22 @@ export function MediaDetailView({
     );
   }
 
+  // Target episode resolution for top ActionButton and active season
+  const globalTarget = getShowTargetEpisode(current.id, episodes, progressMap);
+  const activeSeason = userSelectedSeason ?? globalTarget.season;
+  const currentSeasonEpisodes = episodes.filter((e) => e.season === activeSeason);
+
+  const activeSeasonNum = globalTarget.season;
+  const activeEpisodeNum = globalTarget.episode;
+  const targetEpMeta =
+    episodes.find((ep) => ep.season === activeSeasonNum && ep.episode === activeEpisodeNum) ||
+    globalTarget.epMeta ||
+    episodes[0];
+  const targetEpFileId = globalTarget.fileId;
+  const isTargetEpReady = !isMovie && (!!readyMap[targetEpFileId] || activeRequests[targetEpFileId]?.status === 'ready');
+  const targetEpReq = activeRequests[targetEpFileId];
+  const targetEpProg = progressMap[targetEpFileId];
+
   return (
     <div className="min-h-screen text-zinc-100 animate-in fade-in duration-300 pb-28">
       {/* 1. Full-Bleed Cinematic Hero Banner */}
@@ -305,18 +254,6 @@ export function MediaDetailView({
 
       {/* 2. Main Content Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-8 mt-4">
-        {/* Movie Progress Bar */}
-        {isMovie && moviePercent > 0 && (
-          <div className="space-y-1.5">
-            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="bg-red-600 h-full rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(100, Math.max(5, moviePercent))}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Synopsis & Cast */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-2">
           <div className="lg:col-span-2 space-y-4">
@@ -336,8 +273,8 @@ export function MediaDetailView({
           )}
         </div>
 
-        {/* Movie Primary Play / Request Action Button */}
-        {isMovie && (
+        {/* Primary Play / Request Action Button */}
+        {isMovie ? (
           <div className="pt-2 flex items-center gap-4">
             <StreamActionButton
               isReady={isMovieReady}
@@ -361,6 +298,43 @@ export function MediaDetailView({
               }}
             />
           </div>
+        ) : (
+          <div className="pt-2 flex items-center gap-3.5 flex-wrap">
+            <StreamActionButton
+              isReady={isTargetEpReady}
+              activeRequest={targetEpReq}
+              isRequesting={requestingId === targetEpFileId}
+              hasProgress={Boolean(targetEpProg && targetEpProg.timestamp > 0)}
+              size="lg"
+              onPlay={() => {
+                onPlayMedia({
+                  fileId: targetEpFileId,
+                  mediaId: current.id,
+                  title: current.title,
+                  subtitle: targetEpMeta?.title
+                    ? `S${activeSeasonNum}:E${activeEpisodeNum} "${targetEpMeta.title}"`
+                    : `S${activeSeasonNum}:E${activeEpisodeNum}`,
+                  type: 'show',
+                  season: activeSeasonNum,
+                  episode: activeEpisodeNum,
+                  poster: targetEpMeta?.thumbnail || current.poster,
+                  background: current.background,
+                });
+              }}
+              onRequest={() => {
+                setRequestingId(targetEpFileId);
+                onRequestMedia(targetEpFileId, targetEpMeta).finally(() => setRequestingId(null));
+              }}
+            />
+            <div className="text-sm sm:text-base font-bold text-zinc-300 truncate max-w-md sm:max-w-xl">
+              <span className="text-white">S{activeSeasonNum}:E{activeEpisodeNum}</span>
+              {targetEpMeta?.title && (
+                <span className="text-zinc-400 font-medium ml-1.5">
+                  "{targetEpMeta.title}"
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         {/* 3. TV Show Episode Browser */}
@@ -381,7 +355,7 @@ export function MediaDetailView({
                       onClick={() => setShowSeasonDropdown((prev) => !prev)}
                       className="flex items-center gap-2 px-4 py-2 rounded-2xl glass-panel bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-white transition backdrop-blur-md cursor-pointer"
                     >
-                      <span>Season {selectedSeason}</span>
+                      <span>Season {activeSeason}</span>
                       <ChevronDown
                         className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
                           showSeasonDropdown ? 'rotate-180' : ''
@@ -409,18 +383,17 @@ export function MediaDetailView({
                                   key={s}
                                   type="button"
                                   onClick={() => {
-                                    setSelectedSeason(s);
-                                    setTargetEpisodeNumber(null);
+                                    setUserSelectedSeason(s);
                                     setShowSeasonDropdown(false);
                                   }}
                                   className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                    selectedSeason === s
+                                    activeSeason === s
                                       ? 'bg-red-600 text-white'
                                       : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                                   }`}
                                 >
                                   <span>Season {s}</span>
-                                  {selectedSeason === s && <Check className="w-3.5 h-3.5" />}
+                                  {activeSeason === s && <Check className="w-3.5 h-3.5" />}
                                 </button>
                               ))}
                             </div>
@@ -432,14 +405,13 @@ export function MediaDetailView({
                 ) : (
                   <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto scrollbar-none flex-shrink-0">
                     {seasons.map((s) => {
-                      const isActive = selectedSeason === s;
+                      const isActive = activeSeason === s;
                       return (
                         <button
                           key={s}
                           type="button"
                           onClick={() => {
-                            setSelectedSeason(s);
-                            setTargetEpisodeNumber(null);
+                            setUserSelectedSeason(s);
                           }}
                           className={`relative px-4 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
                             isActive
@@ -485,16 +457,13 @@ export function MediaDetailView({
               ) : (
                 currentSeasonEpisodes.map((ep) => {
                   const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
-                  const isEpReady = !!mergedReadyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
+                  const isEpReady = !!readyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
                   const epReq = activeRequests[epFileId];
-                  const epProg = mergedProgressMap[epFileId];
+                  const epProg = progressMap[epFileId];
                   const epPercent = calculateProgressPercent(epProg);
-                  const isTargetEpisode = targetEpisodeNumber === ep.episode && selectedSeason === ep.season;
-
                   return (
                     <motion.div
                       key={ep.id}
-                      ref={isTargetEpisode ? activeEpisodeCardRef : undefined}
                       whileHover={{ y: -4 }}
                       whileTap={{ scale: 0.98 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}

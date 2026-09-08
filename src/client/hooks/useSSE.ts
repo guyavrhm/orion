@@ -62,7 +62,6 @@ export function useSSE() {
                   status: data.status,
                   progress: data.progress,
                   error: data.error,
-                  updatedAt: Date.now(),
                 },
               };
             });

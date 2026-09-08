@@ -111,7 +111,6 @@ export function App() {
         fileId,
         status: 'queued',
         progress: '0.00',
-        updatedAt: Date.now(),
       },
     }));
 
@@ -148,7 +147,6 @@ export function App() {
           progressPercent: 0,
           duration: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
           last_updated: now,
-          updatedAt: new Date(now).toISOString(),
         },
       }));
     }
@@ -162,7 +160,6 @@ export function App() {
             fileId: res.id,
             status: res.status,
             progress: res.progress,
-            updatedAt: Date.now(),
           },
         }));
       }
@@ -216,7 +213,6 @@ export function App() {
           progressPercent: percent,
           duration,
           last_updated: now,
-          updatedAt: new Date(now).toISOString(),
         },
       }));
 
@@ -225,7 +221,22 @@ export function App() {
         const item = prev.find((i) => i.id === mediaId) || shows.find((s) => s.id === mediaId) || selectedMedia;
         if (!item) return prev;
         const filtered = prev.filter((i) => i.id !== mediaId);
-        return [item, ...filtered];
+
+        let updatedItem = item;
+        if (item.type === 'show' && parsed.isEpisode) {
+          const cachedShow = mediaDetailsCacheRef.current[mediaId] as ShowMetadata | undefined;
+          const currentEp = cachedShow?.episodes?.find((e) => e.season === parsed.season && e.episode === parsed.episode);
+          if (currentEp) {
+            updatedItem = {
+              ...item,
+              episodes: [
+                currentEp,
+                ...((item.episodes || []).filter((e) => !(e.season === currentEp.season && e.episode === currentEp.episode))),
+              ],
+            };
+          }
+        }
+        return [updatedItem, ...filtered];
       });
     } catch (err) {
       console.error(`Failed to update progress for ${fileId}:`, err);
@@ -237,6 +248,23 @@ export function App() {
 
   const handleCacheMediaDetails = useCallback((meta: MovieMetadata | ShowMetadata) => {
     mediaDetailsCacheRef.current[meta.id] = meta;
+    setSelectedMedia((prev) => (prev?.id === meta.id ? meta : prev));
+  }, []);
+
+  const handleUpdateProgressMap = useCallback((newProgress: Record<string, Progress>) => {
+    setProgressMap((prev) => {
+      const merged = { ...prev };
+      for (const [key, val] of Object.entries(newProgress)) {
+        if (!merged[key] || (val.last_updated && (!merged[key].last_updated || val.last_updated > (merged[key].last_updated || 0)))) {
+          merged[key] = val;
+        }
+      }
+      return merged;
+    });
+  }, []);
+
+  const handleUpdateReadyMap = useCallback((newReady: Record<string, Stream>) => {
+    setReadyMap((prev) => ({ ...prev, ...newReady }));
   }, []);
 
   // Scroll Restoration for Explore / Detail navigation
@@ -287,6 +315,8 @@ export function App() {
             onPlayMedia={handlePlayMedia}
             onRequestMedia={handleRequestMedia}
             onCacheMediaDetails={handleCacheMediaDetails}
+            onUpdateProgressMap={handleUpdateProgressMap}
+            onUpdateReadyMap={handleUpdateReadyMap}
           />
         ) : (
           <div className="pt-[calc(env(safe-area-inset-top,0px)+5.75rem)] sm:pt-[104px]">

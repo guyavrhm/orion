@@ -62,7 +62,6 @@ export interface UserActiveMediaState {
   status: UserMediaRequestStatus;
   progress: string;
   error?: string;
-  updatedAt: number;
 }
 
 export interface QueueStateResponse {
