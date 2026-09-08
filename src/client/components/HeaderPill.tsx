@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, Film, Tv, Loader2, Star, Check, ArrowRight, ArrowLeft, AlertCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
@@ -23,6 +23,25 @@ interface HeaderPillProps {
   onClearToast?: () => void;
   showContext?: HeaderPillShowContext | null;
   dragProgress?: number;
+}
+
+function interleaveSearchResults(items: (MovieMetadata | ShowMetadata)[]): (MovieMetadata | ShowMetadata)[] {
+  const movies = items.filter((item) => item.type === 'movie');
+  const shows = items.filter((item) => item.type === 'show');
+
+  const interleaved: (MovieMetadata | ShowMetadata)[] = [];
+  const maxLen = Math.max(movies.length, shows.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    if (i < movies.length) {
+      interleaved.push(movies[i]);
+    }
+    if (i < shows.length) {
+      interleaved.push(shows[i]);
+    }
+  }
+
+  return interleaved;
 }
 
 export function HeaderPill({
@@ -82,18 +101,26 @@ export function HeaderPill({
     }
   }, [showContext?.isScrolledPast]);
 
-  // Focus & select input once when opening search
+  const openSearch = useCallback((e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    setShowNavSeasonDropdown(false);
+    setIsSearching(true);
+    // Synchronously focus the input within the user touch/click gesture tick for iOS/Android
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, []);
+
+  const closeSearch = useCallback((e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    inputRef.current?.blur();
+    setIsSearching(false);
+  }, []);
+
+  // Clear query and search results when closed
   useEffect(() => {
-    if (isSearching) {
-      setShowNavSeasonDropdown(false);
-      const timer = setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.select();
-        }
-      }, 50);
-      return () => clearTimeout(timer);
-    } else {
+    if (!isSearching) {
       setQuery('');
       setResults([]);
       setSearchResultsReady({});
@@ -114,7 +141,8 @@ export function HeaderPill({
     const handler = setTimeout(() => {
       ApiClient.search(query)
         .then((res) => {
-          setResults(res.metadata || []);
+          const raw = res.metadata || [];
+          setResults(interleaveSearchResults(raw));
           if (res.ready) setSearchResultsReady(res.ready);
           setLoading(false);
         })
@@ -133,21 +161,20 @@ export function HeaderPill({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsSearching(true);
+        openSearch();
       }
       if (e.key === 'Escape') {
         if (isSearching) {
           e.preventDefault();
           e.stopPropagation();
-          inputRef.current?.blur();
-          setIsSearching(false);
+          closeSearch();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearching]);
+  }, [isSearching, openSearch, closeSearch]);
 
   // Lock background body scroll when search is active & preserve scroll position
   useEffect(() => {
@@ -227,7 +254,7 @@ export function HeaderPill({
         className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-xl transition-all duration-300"
       >
         <header
-          className={`flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 ${
+          className={`relative flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 overflow-hidden ${
             toast
               ? 'border-white/10 bg-zinc-900/90'
               : isSearching
@@ -235,77 +262,42 @@ export function HeaderPill({
               : 'border-white/10 bg-zinc-900/80'
           }`}
         >
-          <AnimatePresence mode="wait" initial={false}>
-            {toast ? (
-              /* Toast Alert Mode: Dynamic Island Morph */
-              <motion.div
-                key="toast-hud"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="flex-1 flex items-center justify-between gap-3 min-w-0 h-full"
+          {toast ? (
+            /* Toast Alert Mode: Dynamic Island Morph */
+            <motion.div
+              key="toast-hud"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="flex-1 flex items-center justify-between gap-3 min-w-0 h-full"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span className="text-xs font-medium text-zinc-200 truncate">{toast}</span>
+              </div>
+              <button
+                type="button"
+                onClick={onClearToast}
+                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex-shrink-0 cursor-pointer"
+                title="Dismiss"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                  <span className="text-xs font-medium text-zinc-200 truncate">{toast}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClearToast}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex-shrink-0 cursor-pointer"
-                  title="Dismiss"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </motion.div>
-            ) : isSearching ? (
-              /* Active Search Mode: Takes over the entire pill */
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* Brand Mode: Left Brand + Right Action with Smooth Morph Animation */}
               <motion.div
-                key="search-mode"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="flex-1 flex items-center gap-3 min-w-0 h-full"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 text-zinc-400 animate-spin flex-shrink-0" />
-                ) : (
-                  <Search className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                )}
-
-                <input
-                  ref={inputRef}
-                  autoFocus
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search movies, TV shows, actors..."
-                  className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm font-medium focus:outline-none min-w-0"
-                />
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsSearching(false);
-                  }}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
-                  title="Close (Esc)"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </motion.div>
-            ) : (
-              /* Clean Initial State / Show Navigation Morph: Left Brand + Right Action */
-              <motion.div
-                key="brand-mode"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="flex-1 flex items-center justify-between min-w-0 h-full"
+                initial={false}
+                animate={{
+                  opacity: isSearching ? 0 : 1,
+                  scale: isSearching ? 0.96 : 1,
+                }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`flex-1 flex items-center justify-between min-w-0 h-full ${
+                  isSearching ? 'pointer-events-none' : 'pointer-events-auto'
+                }`}
               >
                 {/* Left: Dynamic Back button + Divider + (Orion Brand OR Show Logo/Title) */}
                 <div className="flex items-center min-w-0 flex-1 mr-2">
@@ -427,7 +419,7 @@ export function HeaderPill({
                       exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
                       type="button"
-                      onClick={() => setIsSearching(true)}
+                      onClick={openSearch}
                       className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
                       title="Search (⌘K)"
                     >
@@ -436,8 +428,45 @@ export function HeaderPill({
                   )}
                 </AnimatePresence>
               </motion.div>
-            )}
-          </AnimatePresence>
+
+              {/* Active Search Mode: Persistent DOM Input with Fluid Motion Morph */}
+              <motion.div
+                initial={false}
+                animate={{
+                  opacity: isSearching ? 1 : 0,
+                  scale: isSearching ? 1 : 0.96,
+                }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`absolute inset-0 px-4 flex items-center gap-3 min-w-0 h-full ${
+                  isSearching ? 'pointer-events-auto z-10' : 'pointer-events-none z-0'
+                }`}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 text-zinc-400 animate-spin flex-shrink-0" />
+                ) : (
+                  <Search className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                )}
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search movies, TV shows, actors..."
+                  className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm font-medium focus:outline-none min-w-0"
+                />
+
+                <button
+                  type="button"
+                  onClick={closeSearch}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                  title="Close (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            </>
+          )}
         </header>
 
         {/* Season Picker Dropdown anchored to Nav Pill */}
