@@ -95,6 +95,23 @@ export function App() {
     loadCatalogs();
   }, [loadCatalogs]);
 
+  // Globally prevent dragging images, media, or links
+  useEffect(() => {
+    const handleDragStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === 'IMG' ||
+        target?.tagName === 'A' ||
+        target?.tagName === 'VIDEO' ||
+        target?.closest('img, a, video')
+      ) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('dragstart', handleDragStart);
+    return () => document.removeEventListener('dragstart', handleDragStart);
+  }, []);
+
   // Auto-dismiss Toast Notifications
   useEffect(() => {
     if (!toast) return;
