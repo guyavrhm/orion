@@ -537,40 +537,47 @@ export function MediaDetailView({
                         )}
                       </div>
 
-                      {/* Episode Content: Title Row (with right-aligned request button) and Description */}
+                      {/* Episode Content: Title Row (with right-aligned request button for unready episodes) and Description */}
                       <div className="space-y-1.5 px-0.5 flex-1">
-                        <div className="flex items-center justify-between gap-3 min-w-0">
+                        <div
+                          className={`flex items-center justify-between gap-3 min-w-0 ${isEpReady ? 'cursor-pointer' : ''}`}
+                          onClick={() => {
+                            if (isEpReady) {
+                              onPlayMedia({
+                                fileId: epFileId,
+                                mediaId: current.id,
+                                title: current.title,
+                                subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
+                                type: 'show',
+                                season: ep.season,
+                                episode: ep.episode,
+                                poster: ep.thumbnail || current.poster,
+                                background: current.background,
+                              });
+                            }
+                          }}
+                        >
                           <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors min-w-0">
                             <span className="mr-1.5">{ep.episode}.</span>
                             <span>{ep.title || `Episode ${ep.episode}`}</span>
                           </h4>
 
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <StreamActionButton
-                              isReady={isEpReady}
-                              activeRequest={epReq}
-                              isRequesting={requestingId === epFileId}
-                              hasProgress={epPercent > 0}
-                              size="sm"
-                              onPlay={() => {
-                                onPlayMedia({
-                                  fileId: epFileId,
-                                  mediaId: current.id,
-                                  title: current.title,
-                                  subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                                  type: 'show',
-                                  season: ep.season,
-                                  episode: ep.episode,
-                                  poster: ep.thumbnail || current.poster,
-                                  background: current.background,
-                                });
-                              }}
-                              onRequest={() => {
-                                setRequestingId(epFileId);
-                                onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
-                              }}
-                            />
-                          </div>
+                          {!isEpReady && (
+                            <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <StreamActionButton
+                                isReady={false}
+                                activeRequest={epReq}
+                                isRequesting={requestingId === epFileId}
+                                hasProgress={epPercent > 0}
+                                size="sm"
+                                onPlay={() => {}}
+                                onRequest={() => {
+                                  setRequestingId(epFileId);
+                                  onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
