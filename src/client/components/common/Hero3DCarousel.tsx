@@ -144,7 +144,7 @@ export function Hero3DCarousel({
                     )}
 
                     <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-zinc-300 font-medium">
-                      {item.year && <span className="tabular-nums">{item.year}</span>}
+                      {item.year && <span>{item.year}</span>}
                       {item.rating && (
                         <>
                           <span className="text-zinc-600 select-none">•</span>

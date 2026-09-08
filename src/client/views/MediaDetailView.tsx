@@ -497,7 +497,7 @@ export function MediaDetailView({
                           fallback={
                             <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-600">
                               <Tv className="w-6 h-6 mb-1" />
-                              <span className="text-[10px] font-bold tabular-nums">EP {ep.episode}</span>
+                              <span className="text-[10px] font-bold">EP {ep.episode}</span>
                             </div>
                           }
                         />
@@ -541,7 +541,7 @@ export function MediaDetailView({
                       <div className="space-y-1.5 px-0.5 flex-1">
                         <div className="flex items-center justify-between gap-3 min-w-0">
                           <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors min-w-0">
-                            <span className="mr-1.5 tabular-nums">{ep.episode}.</span>
+                            <span className="mr-1.5">{ep.episode}.</span>
                             <span>{ep.title || `Episode ${ep.episode}`}</span>
                           </h4>
 
