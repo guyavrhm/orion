@@ -48,21 +48,21 @@ export default defineConfig({
       manifest: {
         name: 'Orion',
         short_name: 'Orion',
-        description: 'Orion Media Streamer',
+        description: 'Orion',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
         orientation: 'any',
         icons: [
           {
-            src: 'assets/images/orion.jpg',
+            src: 'assets/images/orion-nobackground.png',
             sizes: '192x192',
-            type: 'image/jpeg',
+            type: 'image/png',
           },
           {
-            src: 'assets/images/orion.jpg',
+            src: 'assets/images/orion-nobackground.png',
             sizes: '512x512',
-            type: 'image/jpeg',
+            type: 'image/png',
           },
         ],
       },
