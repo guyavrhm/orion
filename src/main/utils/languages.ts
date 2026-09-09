@@ -65,11 +65,11 @@ export const SUBTITLE_LANG_MAP: Record<string, string> = {
  */
 export const countryToLanguageMap: Record<string, string[]> = {
   // English-speaking
-  'united states': ['eng', 'en', 'english', 'spa', 'es', 'spanish'],
-  'usa': ['eng', 'en', 'english', 'spa', 'es', 'spanish'],
-  'us': ['eng', 'en', 'english', 'spa', 'es', 'spanish'],
-  'united states of america': ['eng', 'en', 'english', 'spa', 'es', 'spanish'],
-  'america': ['eng', 'en', 'english', 'spa', 'es', 'spanish'],
+  'united states': ['eng', 'en', 'english'],
+  'usa': ['eng', 'en', 'english'],
+  'us': ['eng', 'en', 'english'],
+  'united states of america': ['eng', 'en', 'english'],
+  'america': ['eng', 'en', 'english'],
   'united kingdom': ['eng', 'en', 'english'],
   'uk': ['eng', 'en', 'english'],
   'great britain': ['eng', 'en', 'english'],
@@ -116,14 +116,14 @@ export const countryToLanguageMap: Record<string, string[]> = {
   'korea': ['kor', 'ko', 'korean'],
   'china': ['chi', 'zho', 'zh', 'chinese', 'mandarin'],
   'taiwan': ['chi', 'zho', 'zh', 'chinese', 'mandarin'],
-  'hong kong': ['chi', 'zho', 'zh', 'chinese', 'cantonese', 'eng', 'en', 'english'],
+  'hong kong': ['chi', 'zho', 'zh', 'chinese', 'cantonese'],
 
   // South & Southeast Asia
-  'india': ['hin', 'hi', 'hindi', 'eng', 'en', 'english', 'tam', 'ta', 'tamil', 'tel', 'te', 'telugu'],
+  'india': ['hin', 'hi', 'hindi', 'tam', 'ta', 'tamil', 'tel', 'te', 'telugu', 'ben', 'bn', 'bengali', 'mal', 'ml', 'malayalam', 'kan', 'kn', 'kannada', 'mar', 'mr', 'marathi'],
   'thailand': ['tha', 'th', 'thai'],
   'vietnam': ['vie', 'vi', 'vietnamese'],
   'indonesia': ['ind', 'id', 'indonesian'],
-  'philippines': ['eng', 'en', 'english', 'tgl', 'fil', 'tl', 'tagalog'],
+  'philippines': ['tgl', 'fil', 'tl', 'tagalog'],
 
   // Northern Europe (Nordic)
   'sweden': ['swe', 'sv', 'swedish'],
@@ -155,15 +155,15 @@ export const countryToLanguageMap: Record<string, string[]> = {
   'macedonia': ['mac', 'mkd', 'mk', 'macedonian'],
   'lithuania': ['lit', 'lt', 'lithuanian'],
   'latvia': ['lav', 'lv', 'latvian'],
-  'malaysia': ['may', 'msa', 'ms', 'malay', 'eng', 'en', 'english'],
+  'malaysia': ['may', 'msa', 'ms', 'malay'],
 
   // Middle East & Turkey
   'turkey': ['tur', 'tr', 'turkish'],
   'türkiye': ['tur', 'tr', 'turkish'],
   'iran': ['per', 'fas', 'fa', 'persian', 'farsi'],
   'egypt': ['ara', 'ar', 'arabic'],
-  'israel': ['heb', 'he', 'hebrew', 'ara', 'ar', 'arabic', 'eng', 'en', 'english'],
+  'israel': ['heb', 'he', 'hebrew'],
   'saudi arabia': ['ara', 'ar', 'arabic'],
-  'united arab emirates': ['ara', 'ar', 'arabic', 'eng', 'en', 'english'],
-  'uae': ['ara', 'ar', 'arabic', 'eng', 'en', 'english']
+  'united arab emirates': ['ara', 'ar', 'arabic'],
+  'uae': ['ara', 'ar', 'arabic']
 };

@@ -232,30 +232,36 @@ describe('utils/languages', () => {
   });
 
   describe('countryToLanguageMap', () => {
-    it('should map English-speaking countries and include relevant codes', () => {
-      expect(countryToLanguageMap['united states']).toEqual(expect.arrayContaining(['eng', 'en', 'english', 'spa']));
-      expect(countryToLanguageMap['usa']).toEqual(expect.arrayContaining(['eng', 'en', 'english']));
-      expect(countryToLanguageMap['uk']).toEqual(expect.arrayContaining(['eng', 'en', 'english']));
-      expect(countryToLanguageMap['great britain']).toEqual(expect.arrayContaining(['eng', 'en', 'english']));
-      expect(countryToLanguageMap['australia']).toEqual(expect.arrayContaining(['eng', 'en', 'english']));
+    it('should map English-speaking countries strictly to English codes', () => {
+      expect(countryToLanguageMap['united states']).toEqual(['eng', 'en', 'english']);
+      expect(countryToLanguageMap['united states']).not.toContain('spa');
+      expect(countryToLanguageMap['usa']).toEqual(['eng', 'en', 'english']);
+      expect(countryToLanguageMap['us']).toEqual(['eng', 'en', 'english']);
+      expect(countryToLanguageMap['uk']).toEqual(['eng', 'en', 'english']);
+      expect(countryToLanguageMap['great britain']).toEqual(['eng', 'en', 'english']);
+      expect(countryToLanguageMap['australia']).toEqual(['eng', 'en', 'english']);
       expect(countryToLanguageMap['canada']).toEqual(expect.arrayContaining(['eng', 'en', 'english', 'fre', 'french']));
     });
 
-    it('should map multi-lingual nations correctly', () => {
+    it('should map multi-lingual nations correctly without artificial foreign fallbacks', () => {
       // Switzerland has German, French, Italian
       expect(countryToLanguageMap['switzerland']).toEqual(expect.arrayContaining(['ger', 'fre', 'ita']));
       // Belgium has French and Dutch
       expect(countryToLanguageMap['belgium']).toEqual(expect.arrayContaining(['fre', 'dut']));
-      // India has Hindi, English, Tamil, Telugu
-      expect(countryToLanguageMap['india']).toEqual(expect.arrayContaining(['hin', 'eng', 'tam', 'tel']));
-      // Israel has Hebrew, Arabic, English
-      expect(countryToLanguageMap['israel']).toEqual(expect.arrayContaining(['heb', 'ara', 'eng']));
-      // Philippines has English and Tagalog
-      expect(countryToLanguageMap['philippines']).toEqual(expect.arrayContaining(['eng', 'tgl', 'fil']));
+      // India has Hindi, Tamil, Telugu, etc. (no English fallback)
+      expect(countryToLanguageMap['india']).toEqual(expect.arrayContaining(['hin', 'tam', 'tel']));
+      // Israel has Hebrew (strictly native Hebrew)
+      expect(countryToLanguageMap['israel']).toEqual(expect.arrayContaining(['heb', 'he', 'hebrew']));
+      expect(countryToLanguageMap['israel']).not.toContain('ara');
+      expect(countryToLanguageMap['israel']).not.toContain('eng');
+      // Philippines has Tagalog/Filipino (no English fallback)
+      expect(countryToLanguageMap['philippines']).toEqual(expect.arrayContaining(['tgl', 'fil']));
+      expect(countryToLanguageMap['philippines']).not.toContain('eng');
       // Ukraine has Ukrainian and Russian
       expect(countryToLanguageMap['ukraine']).toEqual(expect.arrayContaining(['ukr', 'rus']));
-      // Hong Kong has Chinese and English
-      expect(countryToLanguageMap['hong kong']).toEqual(expect.arrayContaining(['chi', 'eng', 'cantonese']));
+      // Hong Kong has Chinese and Cantonese (no English fallback)
+      expect(countryToLanguageMap['hong kong']).toEqual(expect.arrayContaining(['chi', 'cantonese']));
+      expect(countryToLanguageMap['hong kong']).not.toContain('eng');
     });
 
     it('should map Asian film producing nations accurately', () => {
@@ -288,7 +294,8 @@ describe('utils/languages', () => {
       expect(countryToLanguageMap['iran']).toEqual(expect.arrayContaining(['per', 'fas', 'persian', 'farsi']));
       expect(countryToLanguageMap['egypt']).toEqual(expect.arrayContaining(['ara', 'ar', 'arabic']));
       expect(countryToLanguageMap['saudi arabia']).toEqual(expect.arrayContaining(['ara', 'ar', 'arabic']));
-      expect(countryToLanguageMap['uae']).toEqual(expect.arrayContaining(['ara', 'ar', 'arabic', 'eng']));
+      expect(countryToLanguageMap['uae']).toEqual(expect.arrayContaining(['ara', 'ar', 'arabic']));
+      expect(countryToLanguageMap['uae']).not.toContain('eng');
     });
   });
 });

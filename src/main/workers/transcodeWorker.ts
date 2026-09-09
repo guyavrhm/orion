@@ -27,17 +27,13 @@ export function getLanguageCodesFromCountry(countryStr?: string | null): string[
     return [];
   }
 
-  const countries = countryStr.toLowerCase().split(',').map((c) => c.trim());
-  const languages: string[] = [];
-
-  for (const country of countries) {
-    if (countryToLanguageMap[country]) {
-      languages.push(...countryToLanguageMap[country]);
-    }
+  const primaryCountry = countryStr.toLowerCase().split(',')[0].trim();
+  if (!primaryCountry || !countryToLanguageMap[primaryCountry]) {
+    return [];
   }
 
   // Remove duplicates and keep order
-  return [...new Set(languages)];
+  return [...new Set(countryToLanguageMap[primaryCountry])];
 }
 
 export interface ProbedMediaInfo {

@@ -148,8 +148,8 @@ describe('transcodeWorker', () => {
 
     it('resolves languages for single country (case-insensitive and trimmed)', () => {
       const usLangs = getLanguageCodesFromCountry('United States');
-      expect(usLangs).toContain('eng');
-      expect(usLangs).toContain('spa');
+      expect(usLangs).toEqual(['eng', 'en', 'english']);
+      expect(usLangs).not.toContain('spa');
 
       const franceLangs = getLanguageCodesFromCountry('  FRANCE  ');
       expect(franceLangs).toEqual(['fre', 'fra', 'fr', 'french']);
@@ -158,27 +158,28 @@ describe('transcodeWorker', () => {
       expect(japanLangs).toEqual(['jpn', 'ja', 'japanese']);
 
       const israelLangs = getLanguageCodesFromCountry('israel');
-      expect(israelLangs).toContain('heb');
-      expect(israelLangs).toContain('ara');
-      expect(israelLangs).toContain('eng');
+      expect(israelLangs).toEqual(['heb', 'he', 'hebrew']);
+      expect(israelLangs).not.toContain('ara');
+      expect(israelLangs).not.toContain('eng');
     });
 
-    it('resolves and merges languages for comma-separated multiple countries with deduplication', () => {
-      const result = getLanguageCodesFromCountry('United States, France, Germany');
-      expect(result).toContain('eng');
-      expect(result).toContain('spa');
-      expect(result).toContain('fre');
-      expect(result).toContain('ger');
-
-      // Deduplication check
-      const usAndUk = getLanguageCodesFromCountry('USA, United Kingdom');
-      const engCount = usAndUk.filter((l) => l === 'eng').length;
-      expect(engCount).toBe(1);
-    });
-
-    it('ignores unknown countries while preserving valid matches', () => {
-      const result = getLanguageCodesFromCountry('Atlantis, France, Narnia');
+    it('resolves languages strictly for the primary (first) listed country', () => {
+      // Primary country is France -> French only (ignores secondary co-producer USA/Germany)
+      const result = getLanguageCodesFromCountry('France, United States, Germany');
       expect(result).toEqual(['fre', 'fra', 'fr', 'french']);
+      expect(result).not.toContain('eng');
+      expect(result).not.toContain('ger');
+
+      // Primary country is Israel -> Hebrew only
+      const israelCoProd = getLanguageCodesFromCountry('Israel, United States');
+      expect(israelCoProd).toEqual(['heb', 'he', 'hebrew']);
+      expect(israelCoProd).not.toContain('ara');
+      expect(israelCoProd).not.toContain('eng');
+    });
+
+    it('returns empty array if primary country is unknown or invalid', () => {
+      const result = getLanguageCodesFromCountry('Atlantis, France, Narnia');
+      expect(result).toEqual([]);
 
       const allUnknown = getLanguageCodesFromCountry('UnknownLand, Fantasia');
       expect(allUnknown).toEqual([]);
