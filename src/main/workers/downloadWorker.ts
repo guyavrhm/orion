@@ -276,7 +276,7 @@ export async function processDownloadJob(
         if (result.client) {
           cleanTorrentDir(result.torrent, true);
           try {
-            result.client.destroy();
+            result.client.destroy(() => {});
           } catch (_) {}
         }
         if (!fs.existsSync(targetDir)) {
@@ -325,7 +325,9 @@ export async function processDownloadJob(
         cleanTorrentDir(torrent, deleteFiles);
       }
       try {
-        client.destroy();
+        client.destroy((err) => {
+          if (err) logger.debug(`WebTorrent client destroy callback (${fileId}): ${err.message}`);
+        });
         logger.info(`WebTorrent client destroyed for job ${fileId}`);
       } catch (e) {
         // ignore
