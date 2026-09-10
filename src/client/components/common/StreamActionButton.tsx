@@ -3,7 +3,7 @@ import { Play, PlusCircle, Loader2, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 
-interface StreamActionButtonProps {
+export interface StreamActionButtonProps {
   isReady: boolean;
   activeRequest?: UserActiveMediaState;
   isRequesting?: boolean;
@@ -27,6 +27,7 @@ export function StreamActionButton({
   className = '',
 }: StreamActionButtonProps) {
   const isPreparing = activeRequest && activeRequest.status !== 'ready';
+  const progressVal = activeRequest ? Math.round(parseFloat(activeRequest.progress || '0')) : 0;
 
   const sizeClasses = {
     sm: 'px-3.5 py-1.5 text-xs rounded-xl gap-1.5',
@@ -35,7 +36,7 @@ export function StreamActionButton({
   };
 
   const iconSizes = {
-    sm: 'w-3 h-3',
+    sm: 'w-3.5 h-3.5',
     md: 'w-4 h-4',
     lg: 'w-4 h-4',
   };
@@ -52,7 +53,7 @@ export function StreamActionButton({
           <Loader2 className={`${iconSizes[size]} animate-spin text-red-400`} />
         )}
         <span className="tabular-nums">
-          {isQueued ? 'Queued' : `Preparing (${activeRequest.progress}%)`}
+          {isQueued ? 'Queued' : `Preparing (${progressVal}%)`}
         </span>
       </div>
     );

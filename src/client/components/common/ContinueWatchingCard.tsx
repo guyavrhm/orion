@@ -1,8 +1,9 @@
 import React from 'react';
-import { Film, Tv, Check, Play, Loader2, Clock } from 'lucide-react';
+import { Film, Tv, Play } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 import { ImageWithSkeleton } from './ImageWithSkeleton.js';
+import { MediaStatusBadge } from './MediaStatusBadge.js';
 
 interface ContinueWatchingCardProps {
   title: string;
@@ -30,9 +31,6 @@ export function ContinueWatchingCard({
   className = '',
 }: ContinueWatchingCardProps) {
   const isMovie = type === 'movie';
-  const isQueued = activeRequest?.status === 'queued';
-  const isPreparing = activeRequest && activeRequest.status !== 'ready' && !isQueued;
-  const shouldShowCheck = isReady;
 
   return (
     <motion.div
@@ -75,24 +73,12 @@ export function ContinueWatchingCard({
         )}
 
         {/* Top-Right Status Badge */}
-        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-          {isQueued ? (
-            <span className="p-1 rounded-full glass-panel bg-black/70 border border-white/15 text-amber-400 shadow-md flex items-center justify-center backdrop-blur-md">
-              <Clock className="w-3 h-3 stroke-[2.2]" />
-            </span>
-          ) : isPreparing ? (
-            <div className="px-2 py-0.5 rounded-full glass-panel bg-black/80 border border-white/15 text-white shadow-md flex items-center gap-1 backdrop-blur-md">
-              <Loader2 className="w-2.5 h-2.5 animate-spin text-red-400" />
-              <span className="text-[10px] font-bold tabular-nums leading-none">
-                {Math.round(parseFloat(activeRequest.progress || '0'))}%
-              </span>
-            </div>
-          ) : shouldShowCheck ? (
-            <span className="p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center">
-              <Check className="w-3 h-3 stroke-[2.5]" />
-            </span>
-          ) : null}
-        </div>
+        <MediaStatusBadge
+          activeRequest={activeRequest}
+          isReady={isReady}
+          showReadyBadge={true}
+          className="absolute top-2 right-2 z-10"
+        />
 
         {/* Red Progress Bar along bottom */}
         {progressPercent > 0 && (

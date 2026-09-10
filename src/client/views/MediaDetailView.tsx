@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Tv, Play, Check, Star, ChevronDown } from 'lucide-react';
+import { Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import type {
   MovieMetadata,
@@ -12,6 +12,7 @@ import type {
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient } from '../services/api.js';
 import { StreamActionButton } from '../components/common/StreamActionButton.js';
+import { MediaStatusBadge } from '../components/common/MediaStatusBadge.js';
 import { Skeleton } from '../components/common/Skeleton.js';
 import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
 import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
@@ -775,12 +776,13 @@ export function MediaDetailView({
                           </div>
                         )}
 
-                        {/* Ready checkmark badge on episode thumbnail */}
-                        {isEpReady && (
-                          <span className="absolute top-2 right-2 p-1 rounded-full bg-emerald-500 text-white shadow-md flex items-center justify-center z-10">
-                            <Check className="w-3 h-3 stroke-[2.5]" />
-                          </span>
-                        )}
+                        {/* Status badge on episode thumbnail (Queued, Preparing %, Ready checkmark) */}
+                        <MediaStatusBadge
+                          activeRequest={epReq}
+                          isReady={isEpReady}
+                          showReadyBadge={true}
+                          className="absolute top-2 right-2 z-10"
+                        />
 
                         {ep.runtime && (
                           <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300 border border-white/5 backdrop-blur-md z-10">
@@ -823,20 +825,28 @@ export function MediaDetailView({
                             <span>{ep.title || `Episode ${ep.episode}`}</span>
                           </h4>
 
-                          {!isEpReady && (
+                          {!isEpReady && (!epReq || epReq.status === 'ready' || epReq.status === 'failed') && (
                             <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <StreamActionButton
-                                isReady={false}
-                                activeRequest={epReq}
-                                isRequesting={requestingId === epFileId}
-                                hasProgress={epPercent > 0}
-                                size="sm"
-                                onPlay={() => {}}
-                                onRequest={() => {
+                              <motion.button
+                                type="button"
+                                whileHover={{ scale: requestingId === epFileId ? 1 : 1.15 }}
+                                whileTap={{ scale: requestingId === epFileId ? 1 : 0.9 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                onClick={() => {
                                   setRequestingId(epFileId);
                                   onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
                                 }}
-                              />
+                                disabled={requestingId === epFileId}
+                                className="text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50 p-0.5 flex items-center justify-center"
+                                title={requestingId === epFileId ? 'Requesting...' : 'Request Episode'}
+                                aria-label="Request episode"
+                              >
+                                {requestingId === epFileId ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                                ) : (
+                                  <PlusCircle className="w-4 h-4" />
+                                )}
+                              </motion.button>
                             </div>
                           )}
                         </div>
