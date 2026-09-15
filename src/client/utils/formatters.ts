@@ -13,6 +13,9 @@ export interface TargetEpisodeResult {
 
 /**
  * Deterministically resolves the active target episode for any show based on normalized progress.
+ * If the most recently updated episode has timestamp > 0, it resumes that watched episode.
+ * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the lowest (season ASC, episode ASC)
+ * among all unwatched episodes.
  */
 export function getShowTargetEpisode(
   showId: string,
@@ -21,13 +24,31 @@ export function getShowTargetEpisode(
 ): TargetEpisodeResult {
   const showProgEntries = Object.entries(progressMap)
     .filter(([k, v]) => v && (v.show_id === showId || k.startsWith(`${showId}_s`)))
-    .map(([k, v]) => ({ key: k, parsed: parseDisplayFileId(k), lastUpdated: v.last_updated || 0 }))
+    .map(([k, v]) => ({
+      key: k,
+      parsed: parseDisplayFileId(k),
+      timestamp: v.timestamp || 0,
+      lastUpdated: v.last_updated || 0,
+    }))
     .filter((e) => e.parsed.season && e.parsed.episode)
     .sort((a, b) => b.lastUpdated - a.lastUpdated);
 
-  const targetSeason = showProgEntries.length > 0 ? showProgEntries[0].parsed.season! : (episodes[0]?.season ?? 1);
-  const targetEpisode = showProgEntries.length > 0 ? showProgEntries[0].parsed.episode! : (episodes[0]?.episode ?? 1);
-  const fileId = showProgEntries.length > 0 ? showProgEntries[0].key : `${showId}_s${targetSeason}_e${targetEpisode}`;
+  let targetEntry = showProgEntries.length > 0 ? showProgEntries[0] : null;
+
+  if (targetEntry && (targetEntry.timestamp || 0) === 0) {
+    const unwatched = showProgEntries.filter((e) => (e.timestamp || 0) === 0);
+    unwatched.sort((a, b) => {
+      if (a.parsed.season !== b.parsed.season) {
+        return a.parsed.season! - b.parsed.season!;
+      }
+      return a.parsed.episode! - b.parsed.episode!;
+    });
+    targetEntry = unwatched[0];
+  }
+
+  const targetSeason = targetEntry ? targetEntry.parsed.season! : (episodes[0]?.season ?? 1);
+  const targetEpisode = targetEntry ? targetEntry.parsed.episode! : (episodes[0]?.episode ?? 1);
+  const fileId = targetEntry ? targetEntry.key : `${showId}_s${targetSeason}_e${targetEpisode}`;
 
   const epMeta =
     episodes.find((e) => e.season === targetSeason && e.episode === targetEpisode) ||

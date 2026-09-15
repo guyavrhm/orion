@@ -58,6 +58,37 @@ const getContinueWatchingShowsStmt = db.prepare(`
   LIMIT ?
 `);
 
+/**
+ * Resolves the active target episode from a list of show episode progress rows (ordered by last_updated DESC).
+ * If the most recently updated episode has timestamp > 0, it resumes that watched episode.
+ * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the lowest (season ASC, episode ASC)
+ * among all unwatched episodes.
+ */
+export function resolveTargetShowEpisode(epRows: Progress[]): Progress | null {
+  if (!epRows || epRows.length === 0) return null;
+
+  const latest = epRows[0]; // epRows is pre-ordered by last_updated DESC
+  if ((latest.timestamp || 0) > 0) {
+    return latest;
+  }
+
+  // Gather all unwatched episodes and sort by season ASC, episode ASC
+  const unwatched = epRows.filter((e) => (e.timestamp || 0) === 0);
+  unwatched.sort((a, b) => {
+    const parsedA = parseFileId(a.id) as ParsedFileIdShow | null;
+    const parsedB = parseFileId(b.id) as ParsedFileIdShow | null;
+    if (parsedA && parsedB) {
+      if (Number(parsedA.season) !== Number(parsedB.season)) {
+        return Number(parsedA.season) - Number(parsedB.season);
+      }
+      return Number(parsedA.episode) - Number(parsedB.episode);
+    }
+    return 0;
+  });
+
+  return unwatched[0] || latest;
+}
+
 export class ProgressRepo {
   /**
    * Retrieves single progress record for any movie or episode fileId.
@@ -123,10 +154,11 @@ export class ProgressRepo {
       if (epRows.length > 0) {
         const latest = epRows[0]; // Already ordered by last_updated DESC
         last_updated = latest.last_updated;
-        const latestParsed = parseFileId(latest.id) as ParsedFileIdShow;
-        if (latestParsed) {
-          last_season = Number(latestParsed.season);
-          last_episode = Number(latestParsed.episode);
+        const targetEp = resolveTargetShowEpisode(epRows) || latest;
+        const targetParsed = parseFileId(targetEp.id) as ParsedFileIdShow;
+        if (targetParsed) {
+          last_season = Number(targetParsed.season);
+          last_episode = Number(targetParsed.episode);
         }
 
         for (const ep of epRows) {
@@ -206,18 +238,20 @@ export class ProgressRepo {
           const epRows = getProgressEpisodesForShowStmt.all(showRow.id) as unknown as Progress[];
           if (epRows.length === 0) continue;
 
-          const latestEp = epRows[0];
-          const parsed = parseFileId(latestEp.id) as ParsedFileIdShow;
+          const targetEp = resolveTargetShowEpisode(epRows);
+          if (!targetEp) continue;
+
+          const parsed = parseFileId(targetEp.id) as ParsedFileIdShow;
           if (!parsed) continue;
 
           const season = Number(parsed.season);
           const episode = Number(parsed.episode);
-          const episodeId = latestEp.id;
+          const episodeId = targetEp.id;
 
           const epMeta = metadataRepo.getEpisodeMetadataSingle(showRow.id, season, episode);
           const showMeta = rebuildShowMetadata(showRow, epMeta ? [epMeta] : []);
           if (showMeta) {
-            metadataWithTimestamp.push({ meta: showMeta, last_updated: showRow.last_updated || latestEp.last_updated || 0 });
+            metadataWithTimestamp.push({ meta: showMeta, last_updated: showRow.last_updated || targetEp.last_updated || 0 });
           }
 
           for (const ep of epRows) {

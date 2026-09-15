@@ -121,75 +121,60 @@ export function App() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Request Media on-demand stream with optimistic update
+  // Request Media on-demand stream: update state on successful server confirmation
   const handleRequestMedia = async (fileId: string, episodeMeta?: EpisodeMetadata) => {
-    // 1. Optimistic immediate state update so user sees queued indicator instantly
-    setActiveRequests((prev) => ({
-      ...prev,
-      [fileId]: {
-        fileId,
-        status: 'queued',
-        progress: '0.00',
-      },
-    }));
-
-    // 2. Optimistically add to continue watching shelf and progress map
-    const parsed = parseDisplayFileId(fileId);
-    const mediaItem = selectedMedia || movies.find((m) => m.id === parsed.mediaId) || shows.find((s) => s.id === parsed.mediaId);
-    if (mediaItem) {
-      const now = Date.now();
-      const updatedMediaItem =
-        mediaItem.type === 'show' && episodeMeta
-          ? {
-              ...mediaItem,
-              episodes: [
-                episodeMeta,
-                ...(((mediaItem as ShowMetadata).episodes || []).filter(
-                  (e: EpisodeMetadata) => !(e.season === episodeMeta.season && e.episode === episodeMeta.episode)
-                )),
-              ],
-            }
-          : mediaItem;
-
-      setContinueWatching((prev) => {
-        const filtered = prev.filter((item) => item.id !== mediaItem.id);
-        return [updatedMediaItem, ...filtered];
-      });
-      setProgressMap((prev) => ({
-        ...prev,
-        [fileId]: prev[fileId] || {
-          id: fileId,
-          fileId,
-          show_id: parsed.isEpisode ? parsed.mediaId : null,
-          timestamp: 0,
-          runtime: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
-          progressPercent: 0,
-          duration: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
-          last_updated: now,
-        },
-      }));
-    }
-
     try {
       const res = await ApiClient.requestMedia(fileId);
-      if (res) {
-        setActiveRequests((prev) => ({
+      if (!res) return;
+
+      const parsed = parseDisplayFileId(fileId);
+
+      // 1. Update active requests with server response
+      setActiveRequests((prev) => ({
+        ...prev,
+        [fileId]: {
+          fileId: res.id,
+          status: res.status,
+          progress: res.progress,
+        },
+      }));
+
+      // 2. Add to continue watching shelf and progress map
+      const mediaItem = selectedMedia || movies.find((m) => m.id === parsed.mediaId) || shows.find((s) => s.id === parsed.mediaId);
+      if (mediaItem) {
+        const now = Date.now();
+        const cachedShow = mediaDetailsCacheRef.current[parsed.mediaId] as ShowMetadata | undefined;
+        const allKnownEpisodes = cachedShow?.episodes || (mediaItem as ShowMetadata).episodes || [];
+        const updatedMediaItem =
+          mediaItem.type === 'show' && episodeMeta
+            ? {
+                ...mediaItem,
+                episodes: [
+                  episodeMeta,
+                  ...(allKnownEpisodes.filter(
+                    (e: EpisodeMetadata) => !(e.season === episodeMeta.season && e.episode === episodeMeta.episode)
+                  )),
+                ],
+              }
+            : mediaItem;
+
+        setContinueWatching((prev) => [updatedMediaItem, ...prev.filter((item) => item.id !== mediaItem.id)]);
+        setProgressMap((prev) => ({
           ...prev,
-          [fileId]: {
-            fileId: res.id,
-            status: res.status,
-            progress: res.progress,
+          [fileId]: prev[fileId] || {
+            id: fileId,
+            fileId,
+            show_id: parsed.isEpisode ? parsed.mediaId : null,
+            timestamp: 0,
+            runtime: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
+            progressPercent: 0,
+            duration: episodeMeta?.runtime ? episodeMeta.runtime * 60 : 0,
+            last_updated: now,
           },
         }));
       }
     } catch (err: unknown) {
       console.error(`Failed to request media ${fileId}:`, err);
-      // Revert optimistic state upon failure
-      setActiveRequests((prev) => {
-        const next = { ...prev };
-        delete next[fileId];
-        return next;
-      });
       const friendlyMsg = getFriendlyErrorMessage(err);
       if (friendlyMsg) {
         setToast(friendlyMsg);

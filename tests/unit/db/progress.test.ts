@@ -433,6 +433,111 @@ describe('db/progress - ProgressRepo', () => {
       expect(cwAll.progress['movie_combined'].timestamp).toBe(500);
     });
 
+    it('should resolve the lowest season and episode number when multiple episodes are requested unwatched (timestamp === 0)', () => {
+      metadataRepo.saveCachedMetadata('show_unwatched_batch', 'show', {
+        id: 'show_unwatched_batch',
+        type: 'show',
+        title: 'Batch Show',
+        year: '2024',
+        released: null,
+        genres: [],
+        poster: null,
+        background: null,
+        logo: null,
+        rating: null,
+        runtime: null,
+        description: null,
+        awards: null,
+        cast: [],
+        director: [],
+        writer: [],
+        country: null,
+        status: 'Continuing',
+        tvdb_id: null,
+        moviedb_id: null,
+        popularity: null,
+        episodes: [
+          { id: 'show_unwatched_batch_s1_e5', show_id: 'show_unwatched_batch', season: 1, episode: 5, title: 'Ep 5', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null },
+          { id: 'show_unwatched_batch_s1_e6', show_id: 'show_unwatched_batch', season: 1, episode: 6, title: 'Ep 6', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null },
+          { id: 'show_unwatched_batch_s1_e7', show_id: 'show_unwatched_batch', season: 1, episode: 7, title: 'Ep 7', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null }
+        ]
+      }, 'Continuing');
+
+      // Request E5 at T1, E6 at T2, E7 at T3 (all timestamp 0)
+      progressRepo.saveProgress('show_unwatched_batch_s1_e5', { timestamp: 0, runtime: 0 });
+      progressRepo.saveProgress('show_unwatched_batch_s1_e6', { timestamp: 0, runtime: 0 });
+      progressRepo.saveProgress('show_unwatched_batch_s1_e7', { timestamp: 0, runtime: 0 });
+
+      db.prepare('UPDATE progress SET last_updated = 1000 WHERE id = ?').run('show_unwatched_batch_s1_e5');
+      db.prepare('UPDATE progress SET last_updated = 2000 WHERE id = ?').run('show_unwatched_batch_s1_e6');
+      db.prepare('UPDATE progress SET last_updated = 3000 WHERE id = ?').run('show_unwatched_batch_s1_e7');
+
+      const cw = progressRepo.getContinueWatching('show', 10);
+      expect(cw.metadata).toHaveLength(1);
+      expect(cw.metadata[0].id).toBe('show_unwatched_batch');
+      // Should target Episode 5 (the lowest unwatched), not Episode 7
+      const showMeta = cw.metadata[0] as any;
+      expect(showMeta.episodes).toHaveLength(1);
+      expect(showMeta.episodes[0].season).toBe(1);
+      expect(showMeta.episodes[0].episode).toBe(5);
+
+      const singleShow = progressRepo.getSingleShowProgress('show_unwatched_batch');
+      expect(singleShow.last_season).toBe(1);
+      expect(singleShow.last_episode).toBe(5);
+    });
+
+    it('should prioritize the actively watched episode when one episode is played even if requested earlier', () => {
+      metadataRepo.saveCachedMetadata('show_mixed_batch', 'show', {
+        id: 'show_mixed_batch',
+        type: 'show',
+        title: 'Mixed Show',
+        year: '2024',
+        released: null,
+        genres: [],
+        poster: null,
+        background: null,
+        logo: null,
+        rating: null,
+        runtime: null,
+        description: null,
+        awards: null,
+        cast: [],
+        director: [],
+        writer: [],
+        country: null,
+        status: 'Continuing',
+        tvdb_id: null,
+        moviedb_id: null,
+        popularity: null,
+        episodes: [
+          { id: 'show_mixed_batch_s1_e3', show_id: 'show_mixed_batch', season: 1, episode: 3, title: 'Ep 3', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null },
+          { id: 'show_mixed_batch_s1_e8', show_id: 'show_mixed_batch', season: 1, episode: 8, title: 'Ep 8', description: null, thumbnail: null, released: null, rating: null, tvdb_id: null, runtime: null }
+        ]
+      }, 'Continuing');
+
+      // Request E3 at T1 (timestamp 0), Request E8 at T2 (timestamp 0)
+      progressRepo.saveProgress('show_mixed_batch_s1_e3', { timestamp: 0, runtime: 0 });
+      progressRepo.saveProgress('show_mixed_batch_s1_e8', { timestamp: 0, runtime: 0 });
+
+      // Then user plays E8 at T3 (timestamp 1200)
+      progressRepo.saveProgress('show_mixed_batch_s1_e8', { timestamp: 1200, runtime: 3000 });
+
+      db.prepare('UPDATE progress SET last_updated = 1000 WHERE id = ?').run('show_mixed_batch_s1_e3');
+      db.prepare('UPDATE progress SET last_updated = 5000 WHERE id = ?').run('show_mixed_batch_s1_e8');
+
+      const cw = progressRepo.getContinueWatching('show', 10);
+      expect(cw.metadata).toHaveLength(1);
+      const showMeta = cw.metadata[0] as any;
+      expect(showMeta.episodes).toHaveLength(1);
+      // Episode 8 was played most recently, so it should be the target
+      expect(showMeta.episodes[0].season).toBe(1);
+      expect(showMeta.episodes[0].episode).toBe(8);
+
+      const singleShow = progressRepo.getSingleShowProgress('show_mixed_batch');
+      expect(singleShow.last_season).toBe(1);
+      expect(singleShow.last_episode).toBe(8);
+    });
+
     it('should return empty results when no continue watching records exist', () => {
       const cwMovies = progressRepo.getContinueWatching('movie');
       expect(cwMovies).toEqual({ metadata: [], progress: {}, ready: {} });

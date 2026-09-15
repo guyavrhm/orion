@@ -275,9 +275,11 @@ export async function processDownloadJob(
         // Clean up unselected candidate test client and files
         if (result.client) {
           cleanTorrentDir(result.torrent, true);
-          try {
-            result.client.destroy(() => {});
-          } catch (_) {}
+          result.client.destroy((err) => {
+            if (err) {
+              logger.debug(`Error destroying candidate WebTorrent client (${candidate.hash}):`, err);
+            }
+          });
         }
         if (!fs.existsSync(targetDir)) {
           fs.mkdirSync(targetDir, { recursive: true });
@@ -324,14 +326,13 @@ export async function processDownloadJob(
       if (torrent) {
         cleanTorrentDir(torrent, deleteFiles);
       }
-      try {
-        client.destroy((err) => {
-          if (err) logger.debug(`WebTorrent client destroy callback (${fileId}): ${err.message}`);
-        });
-        logger.info(`WebTorrent client destroyed for job ${fileId}`);
-      } catch (e) {
-        // ignore
-      }
+      client.destroy((err) => {
+        if (err) {
+          logger.debug(`WebTorrent client destroy error (${fileId}):`, err);
+        } else {
+          logger.info(`WebTorrent client destroyed for job ${fileId}`);
+        }
+      });
     };
 
     /**
