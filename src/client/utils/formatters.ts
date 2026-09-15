@@ -14,8 +14,8 @@ export interface TargetEpisodeResult {
 /**
  * Deterministically resolves the active target episode for any show based on normalized progress.
  * If the most recently updated episode has timestamp > 0, it resumes that watched episode.
- * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the lowest (season ASC, episode ASC)
- * among all unwatched episodes.
+ * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the oldest
+ * requested episode among all unwatched requests (FIFO).
  */
 export function getShowTargetEpisode(
   showId: string,
@@ -37,12 +37,7 @@ export function getShowTargetEpisode(
 
   if (targetEntry && (targetEntry.timestamp || 0) === 0) {
     const unwatched = showProgEntries.filter((e) => (e.timestamp || 0) === 0);
-    unwatched.sort((a, b) => {
-      if (a.parsed.season !== b.parsed.season) {
-        return a.parsed.season! - b.parsed.season!;
-      }
-      return a.parsed.episode! - b.parsed.episode!;
-    });
+    unwatched.sort((a, b) => a.lastUpdated - b.lastUpdated);
     targetEntry = unwatched[0];
   }
 
@@ -61,6 +56,36 @@ export function getShowTargetEpisode(
     epMeta,
     fileId,
   };
+}
+
+/**
+ * Resolves the immediate next episode in chronological sequence for a show.
+ * First checks for the next episode in the current season (S{current} E{current+1}).
+ * If current episode is the season finale, checks for the first episode of the next season.
+ * Returns null if current is the series finale or inputs are invalid.
+ */
+export function getNextEpisode(
+  episodes: EpisodeMetadata[] = [],
+  currentSeason?: number,
+  currentEpisode?: number
+): EpisodeMetadata | null {
+  if (currentSeason == null || currentEpisode == null || episodes.length === 0) {
+    return null;
+  }
+
+  // 1. Next episode in current season (handles non-consecutive numbering)
+  const nextInSeason = episodes
+    .filter((e) => e.season === currentSeason && e.episode > currentEpisode)
+    .sort((a, b) => a.episode - b.episode)[0];
+
+  if (nextInSeason) return nextInSeason;
+
+  // 2. First episode of next season (season finale case)
+  const nextSeasons = episodes
+    .filter((e) => e.season > currentSeason)
+    .sort((a, b) => a.season - b.season || a.episode - b.episode);
+
+  return nextSeasons[0] || null;
 }
 
 /**

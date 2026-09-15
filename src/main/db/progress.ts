@@ -60,9 +60,8 @@ const getContinueWatchingShowsStmt = db.prepare(`
 
 /**
  * Resolves the active target episode from a list of show episode progress rows (ordered by last_updated DESC).
- * If the most recently updated episode has timestamp > 0, it resumes that watched episode.
- * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the lowest (season ASC, episode ASC)
- * among all unwatched episodes.
+ * If the most recently updated episode has timestamp === 0 (unwatched request), it picks the oldest
+ * requested episode among all unwatched requests (FIFO).
  */
 export function resolveTargetShowEpisode(epRows: Progress[]): Progress | null {
   if (!epRows || epRows.length === 0) return null;
@@ -72,19 +71,9 @@ export function resolveTargetShowEpisode(epRows: Progress[]): Progress | null {
     return latest;
   }
 
-  // Gather all unwatched episodes and sort by season ASC, episode ASC
+  // Gather all unwatched episodes and sort by oldest request (FIFO)
   const unwatched = epRows.filter((e) => (e.timestamp || 0) === 0);
-  unwatched.sort((a, b) => {
-    const parsedA = parseFileId(a.id) as ParsedFileIdShow | null;
-    const parsedB = parseFileId(b.id) as ParsedFileIdShow | null;
-    if (parsedA && parsedB) {
-      if (Number(parsedA.season) !== Number(parsedB.season)) {
-        return Number(parsedA.season) - Number(parsedB.season);
-      }
-      return Number(parsedA.episode) - Number(parsedB.episode);
-    }
-    return 0;
-  });
+  unwatched.sort((a, b) => (a.last_updated || 0) - (b.last_updated || 0));
 
   return unwatched[0] || latest;
 }

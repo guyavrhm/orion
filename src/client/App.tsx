@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type {
   MovieMetadata,
   ShowMetadata,
@@ -11,7 +11,7 @@ import type {
 } from './types/ui.js';
 import { ApiClient } from './services/api.js';
 import { useSSE } from './hooks/useSSE.js';
-import { parseDisplayFileId, getFriendlyErrorMessage } from './utils/formatters.js';
+import { parseDisplayFileId, getFriendlyErrorMessage, getNextEpisode } from './utils/formatters.js';
 
 import { AlertCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,6 +42,10 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [showNavContext, setShowNavContext] = useState<HeaderPillShowContext | null>(null);
   const [detailDragProgress, setDetailDragProgress] = useState<number>(0);
+
+  // In-Memory cache for fully resolved show & movie details and scroll restoration
+  const mediaDetailsCacheRef = useRef<Record<string, MovieMetadata | ShowMetadata>>({});
+  const exploreScrollYRef = useRef<number>(0);
 
   // SSE Real-time Updates Hook
   const { activeRequests, setActiveRequests } = useSSE();
@@ -247,8 +251,55 @@ export function App() {
     }
   }, [selectedMedia, shows]);
 
-  // In-Memory cache for fully resolved show & movie details
-  const mediaDetailsCacheRef = useRef<Record<string, MovieMetadata | ShowMetadata>>({});
+  // Resolve next episode metadata for current active playback
+  const nextEpisodeMeta = useMemo(() => {
+    if (!playingMedia || playingMedia.type !== 'show') return null;
+    const activeShowMeta =
+      (mediaDetailsCacheRef.current[playingMedia.mediaId] as ShowMetadata | undefined) ||
+      (selectedMedia?.id === playingMedia.mediaId ? (selectedMedia as ShowMetadata) : undefined) ||
+      shows.find((s) => s.id === playingMedia.mediaId);
+
+    return activeShowMeta
+      ? getNextEpisode(activeShowMeta.episodes || [], playingMedia.season, playingMedia.episode)
+      : null;
+  }, [playingMedia, selectedMedia, shows]);
+
+  const handleNextEpisode = useCallback(() => {
+    if (!playingMedia || !nextEpisodeMeta) return;
+
+    const nextFileId = nextEpisodeMeta.id;
+    const isReady = !!readyMap[nextFileId] || activeRequests[nextFileId]?.status === 'ready';
+    const isPreparing =
+      activeRequests[nextFileId]?.status === 'preparing' ||
+      activeRequests[nextFileId]?.status === 'queued';
+
+    if (isReady) {
+      handleProgressUpdate(
+        nextFileId,
+        0,
+        nextEpisodeMeta.runtime ? nextEpisodeMeta.runtime * 60 : 0
+      );
+      handlePlayMedia({
+        fileId: nextFileId,
+        mediaId: playingMedia.mediaId,
+        title: playingMedia.title,
+        subtitle: nextEpisodeMeta.title
+          ? `S${nextEpisodeMeta.season}:E${nextEpisodeMeta.episode} "${nextEpisodeMeta.title}"`
+          : `S${nextEpisodeMeta.season}:E${nextEpisodeMeta.episode}`,
+        type: 'show',
+        season: nextEpisodeMeta.season,
+        episode: nextEpisodeMeta.episode,
+        poster: nextEpisodeMeta.thumbnail || playingMedia.poster,
+        background: playingMedia.background,
+      });
+    } else {
+      // Close player first, then initiate download/transcode request if not in progress
+      setPlayingMedia(null);
+      if (!isPreparing) {
+        handleRequestMedia(nextFileId, nextEpisodeMeta);
+      }
+    }
+  }, [playingMedia, nextEpisodeMeta, readyMap, activeRequests, handleProgressUpdate, handlePlayMedia, handleRequestMedia]);
 
   const handleCacheMediaDetails = useCallback((meta: MovieMetadata | ShowMetadata) => {
     mediaDetailsCacheRef.current[meta.id] = meta;
@@ -270,9 +321,6 @@ export function App() {
   const handleUpdateReadyMap = useCallback((newReady: Record<string, Stream>) => {
     setReadyMap((prev) => ({ ...prev, ...newReady }));
   }, []);
-
-  // Scroll Restoration for Explore / Detail navigation
-  const exploreScrollYRef = useRef<number>(0);
 
   // Lock background body/html scroll when detail view or player is active
   useEffect(() => {
@@ -393,10 +441,12 @@ export function App() {
             className="fixed inset-0 z-[60] bg-black"
           >
             <HlsPlayer
+              key={playingMedia.fileId}
               media={playingMedia}
               initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
               onClose={() => setPlayingMedia(null)}
               onProgressUpdate={handleProgressUpdate}
+              onNextEpisode={nextEpisodeMeta ? handleNextEpisode : undefined}
             />
           </motion.div>
         )}

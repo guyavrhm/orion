@@ -16,6 +16,7 @@ import {
   Check,
   Sliders,
   AlertCircle,
+  SkipForward,
 } from 'lucide-react';
 import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient, type StreamInfoResponse } from '../services/api.js';
@@ -28,9 +29,16 @@ interface HlsPlayerProps {
   initialTimestamp?: number;
   onClose: () => void;
   onProgressUpdate?: (fileId: string, timestamp: number, runtime: number) => void;
+  onNextEpisode?: () => void;
 }
 
-export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpdate }: HlsPlayerProps) {
+export function HlsPlayer({
+  media,
+  initialTimestamp = 0,
+  onClose,
+  onProgressUpdate,
+  onNextEpisode,
+}: HlsPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -62,6 +70,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   const [currentSubtitleText, setCurrentSubtitleText] = useState<string>('');
 
   const initialTimestampRef = useRef<number>(initialTimestamp);
+  const isTransitioningRef = useRef<boolean>(false);
   const parsedCuesRef = useRef<SubtitleCue[]>([]);
 
   // 1. Fetch Stream Info & Subtitle Preference
@@ -349,7 +358,9 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
 
     return () => {
       clearInterval(interval);
-      flushProgress();
+      if (!isTransitioningRef.current) {
+        flushProgress();
+      }
     };
   }, [flushProgress]);
 
@@ -1090,6 +1101,20 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                   className="w-16 sm:w-24 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none"
                 />
               </div>
+
+              {onNextEpisode && (
+                <button
+                  onClick={() => {
+                    isTransitioningRef.current = true;
+                    flushProgress();
+                    onNextEpisode();
+                  }}
+                  className="p-1.5 text-zinc-400 hover:text-white transition cursor-pointer"
+                  title="Next Episode"
+                >
+                  <SkipForward className="w-5 h-5" />
+                </button>
+              )}
 
               <div className="text-xs tabular-nums text-zinc-400 font-semibold tracking-wider">
                 <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
