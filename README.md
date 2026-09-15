@@ -4,7 +4,7 @@
 
 ### Self-Hosted Torrent Client and Media Server
 
-*Searches, downloads, transcodes, syncs, and streams to any device.*
+*Simple, Reliable, Universal*
 
 <img src="https://github.com/user-attachments/assets/d01f920b-c06b-4765-8913-b00460b8567c" alt="Orion Interface Preview" width="720">
 
@@ -23,7 +23,7 @@
 
 Orion is a lightweight self-hosted torrent client and media server built for reliable, automated media management and playback. 
 
-Instead of relying on live torrent streaming with limited device compatibility, or complex setups involving multiple services, Orion handles the entire media lifecycle automatically, even on a low-spec server. Everything is fully prepared in advance for instant playback across multiple devices.
+Instead of relying on fragile live torrent streaming, or complex setups involving multiple services, Orion handles the entire media lifecycle automatically, even on a low-spec server. Everything is fully prepared in advance for instant playback across multiple devices.
 
 Orion is split into two distinct halves:
 1. **The Engine (Backend):** Self-hosted on your server or computer. It automatically discovers and verifies torrent streams, manages downloads, fixes subtitles, transcodes media, and serves cached content to multiple clients.
@@ -85,7 +85,7 @@ npm run test:coverage
 
 ### Playback & Client
 - **Universal Web App**: Cross-platform (iOS, Android, desktop, web) with synchronized watch progress, built-in search, and metadata integration.
-- **Universal Two-Lane HLS Transcoding**: Supports modern and legacy video formats with H.264 stream-copy, adaptive HEVC/AV1 re-encoding, and multi-channel audio normalization.
+- **Universal Transcoding**: Supports modern and legacy video formats with H.264 stream-copy, adaptive HEVC/AV1 re-encoding, and multi-channel audio normalization.
 
 ### Torrent & Media Pipeline
 - **Intelligent Torrent Engine**: Dynamic API scraping with automated stream selection, codec-aware priority ranking, dead swarm failover, and queue stall management with piece preservation.
@@ -98,7 +98,7 @@ npm run test:coverage
 
 ## How It Compares
 
-All the power of a full media automation stack in a single app, without fragile live torrent streaming or complex multi-service setups.
+All the power of a full media automation stack in a single app, without unstable live torrent streaming or complex multi-service setups.
 
 | Feature | Live Torrent Streaming | The *Arr Stack + Plex | Orion |
 | :--- | :--- | :--- | :--- |
@@ -150,7 +150,6 @@ Contributions and ideas are welcome! Here's what's on the horizon:
 - **Offline PWA Downloads** - Allow users to locally save transcoded media directly to their devices (via the browser) for a fully offline experience, perfect for flights or commutes.
 - **Admin Dashboard** - Web-based control panel to monitor server health, active streams, queue metrics, storage usage, and manage system configuration.
 - **Dedicated Smart TV Apps** - Native and optimized big-screen applications (Android TV, Apple TV, LG webOS, Samsung Tizen) tailored for 10-foot navigation.
-- **Frontend Architecture Refactor** - Modernizing the client application with a modern component framework (e.g., React) for improved state management, extensibility, and UI performance.
 
 ## Contributing
 
