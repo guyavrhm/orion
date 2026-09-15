@@ -12,7 +12,7 @@ import {
   Subtitles,
   Settings,
   ArrowLeft,
-  PictureInPicture2,
+  Cast,
   Check,
   Sliders,
   AlertCircle,
@@ -363,17 +363,38 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     }
   }, []);
 
-  const triggerActivity = useCallback(() => {
-    setShowControls(true);
+  const resetHideTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
+    if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
+      controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
-      }
-    }, 3500);
+      }, 3000);
+    }
   }, [isPlaying, showSubtitleMenu, showSettingsMenu]);
+
+  useEffect(() => {
+    if (!showControls || !isPlaying || showSubtitleMenu || showSettingsMenu) {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      return;
+    }
+
+    resetHideTimer();
+
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [showControls, isPlaying, showSubtitleMenu, showSettingsMenu, resetHideTimer]);
+
+  const triggerActivity = useCallback(() => {
+    setShowControls(true);
+    resetHideTimer();
+  }, [resetHideTimer]);
 
   const toggleControls = useCallback(() => {
     if (showControls) {
@@ -460,17 +481,38 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     }
   };
 
-  const togglePiP = async () => {
-    const video = videoRef.current;
+  const handleCast = async () => {
+    const video = videoRef.current as any;
     if (!video) return;
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture().catch(() => {});
-    } else {
-      await video.requestPictureInPicture().catch(() => {});
+
+    // 1. Apple AirPlay (Safari iOS / macOS)
+    if (typeof video.webkitShowPlaybackTargetPicker === 'function') {
+      video.webkitShowPlaybackTargetPicker();
+      return;
+    }
+
+    // 2. Standard Remote Playback API (Chrome / Android / modern browsers)
+    if (video.remote && typeof video.remote.prompt === 'function') {
+      try {
+        await video.remote.prompt();
+      } catch {
+        // Picker dismissed or unsupported
+      }
+      return;
+    }
+
+    // 3. Fallback: Presentation API
+    if (typeof window !== 'undefined' && 'PresentationRequest' in window) {
+      try {
+        const request = new (window as any).PresentationRequest([window.location.href]);
+        await request.start();
+      } catch {
+        // Picker dismissed or unsupported
+      }
     }
   };
 
-  // 9. MediaSession Hook
+  // 10. MediaSession Hook
   useMediaSession({
     media,
     isPlaying,
@@ -573,6 +615,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   }, []);
 
   const isTouchInteractionRef = useRef<boolean>(false);
+  const isBackdropClickPendingRef = useRef<boolean>(false);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -586,14 +629,48 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
     [triggerActivity]
   );
 
+  const handlePointerEnter = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.pointerType === 'touch') return;
+      triggerActivity();
+    },
+    [triggerActivity]
+  );
+
+  const handlePointerLeave = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.pointerType === 'touch') return;
+      if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
+        dismissControls();
+      }
+    },
+    [isPlaying, showSubtitleMenu, showSettingsMenu, dismissControls]
+  );
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isPlaying && !showSubtitleMenu && !showSettingsMenu) {
+        dismissControls();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isPlaying, showSubtitleMenu, showSettingsMenu, dismissControls]);
+
   const handleBackdropAction = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
       // If clicking interactive control (buttons, sliders, dropdown items), do nothing here
-      if (target.closest('button, input, select, textarea, [role="button"], a, .interactive-control')) {
+      if (target.closest('button, input, select, textarea, [role="button"], a, .interactive-control, .glass-panel')) {
         return;
       }
+
+      // If the interaction did not START on the backdrop, or was already cleared, ignore
+      if (!isBackdropClickPendingRef.current) {
+        return;
+      }
+      isBackdropClickPendingRef.current = false;
 
       const native = e.nativeEvent as any;
       const isTouch =
@@ -601,6 +678,20 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         native?.sourceCapabilities?.firesTouchEvents === true ||
         isTouchInteractionRef.current ||
         (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && native?.pointerType !== 'mouse');
+
+      // If menus are open:
+      // - Mobile (touch): single tap cleanly dismisses both the menu AND controls
+      // - Desktop (mouse): closes menu while keeping controls visible
+      if (showSubtitleMenu || showSettingsMenu) {
+        setShowSubtitleMenu(false);
+        setShowSettingsMenu(false);
+        if (isTouch) {
+          dismissControls();
+        } else {
+          triggerActivity();
+        }
+        return;
+      }
 
       if (isTouch) {
         // Touch (finger tap): only dismiss or reveal controls
@@ -614,7 +705,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         togglePlay();
       }
     },
-    [showControls, dismissControls, triggerActivity, togglePlay]
+    [showControls, showSubtitleMenu, showSettingsMenu, dismissControls, triggerActivity, togglePlay]
   );
 
   // 11. Lock Body Scroll & Prevent Background Scroll Leaks
@@ -669,12 +760,17 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
   return (
     <div
       ref={containerRef}
-      onPointerDown={(e) => {
+      onPointerDownCapture={(e) => {
         if (e.pointerType === 'touch') {
           isTouchInteractionRef.current = true;
         } else if (e.pointerType === 'mouse') {
           isTouchInteractionRef.current = false;
         }
+        const target = e.target as HTMLElement | null;
+        const isInteractive = Boolean(
+          target?.closest('button, input, select, textarea, [role="button"], a, .interactive-control, .glass-panel')
+        );
+        isBackdropClickPendingRef.current = !isInteractive;
       }}
       onTouchStart={(e) => {
         isTouchInteractionRef.current = true;
@@ -687,6 +783,8 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
         e.stopPropagation();
       }}
       onPointerMove={handlePointerMove}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none overflow-hidden overscroll-none"
     >
       {/* Video Element */}
@@ -787,13 +885,13 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
           </div>
 
           <div className="flex items-center gap-2">
-            {/* PiP Button */}
+            {/* Cast to Display Button */}
             <button
-              onClick={togglePiP}
+              onClick={handleCast}
               className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
-              title="Picture in Picture"
+              title="Cast to Display"
             >
-              <PictureInPicture2 className="w-5 h-5" />
+              <Cast className="w-5 h-5" />
             </button>
 
             {/* Subtitles Menu Trigger */}
@@ -803,11 +901,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
                   setShowSubtitleMenu(!showSubtitleMenu);
                   setShowSettingsMenu(false);
                 }}
-                className={`p-2.5 rounded-full transition backdrop-blur-md cursor-pointer ${
-                  activeSubtitleLang
-                    ? 'bg-red-600 text-white'
-                    : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white'
-                }`}
+                className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
                 title="Subtitles & Audio"
               >
                 <Subtitles className="w-5 h-5" />
@@ -943,7 +1037,7 @@ export function HlsPlayer({ media, initialTimestamp = 0, onClose, onProgressUpda
             className="p-5 rounded-full bg-red-600 hover:bg-red-500 text-white transition transform hover:scale-105 active:scale-95 cursor-pointer"
             title="Play / Pause (Space / K)"
           >
-            {isPlaying ? <Pause className="w-9 h-9" /> : <Play className="w-9 h-9 fill-current ml-1" />}
+            {isPlaying ? <Pause className="w-9 h-9 fill-current" /> : <Play className="w-9 h-9 fill-current" />}
           </button>
 
           <button
