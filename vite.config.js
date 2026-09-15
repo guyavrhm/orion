@@ -55,14 +55,14 @@ export default defineConfig({
         orientation: 'any',
         icons: [
           {
-            src: 'assets/images/orion-nobackground.png',
+            src: 'assets/images/orion.jpg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/jpeg',
           },
           {
-            src: 'assets/images/orion-nobackground.png',
+            src: 'assets/images/orion.jpg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
           },
         ],
       },
