@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Star, Info } from 'lucide-react';
+import { Star, Info, Film, Tv } from 'lucide-react';
 import { motion, type PanInfo } from 'motion/react';
 import type { MovieMetadata, ShowMetadata } from '../../../main/types/index.js';
 import { ImageWithSkeleton } from './ImageWithSkeleton.js';
@@ -119,7 +119,16 @@ export function Hero3DCarousel({
                     src={item.background || item.poster}
                     alt={item.title}
                     priority={isCenter}
-                    className="w-full h-full object-cover object-center opacity-45 group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover object-center opacity-100 group-hover:scale-105 transition-transform duration-700"
+                    fallback={
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-700">
+                        {item.type === 'movie' ? (
+                          <Film className="w-16 h-16 opacity-20" />
+                        ) : (
+                          <Tv className="w-16 h-16 opacity-20" />
+                        )}
+                      </div>
+                    }
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
                   <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/45 to-transparent" />

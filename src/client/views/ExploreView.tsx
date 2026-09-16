@@ -249,6 +249,8 @@ export function ExploreView({
                 subtitle={subtitle}
                 thumbnail={target.epMeta?.thumbnail || item.background || item.poster}
                 type="show"
+                season={target.season}
+                episode={target.episode}
                 progressPercent={percent}
                 isReady={isReady}
                 activeRequest={activeRequest}

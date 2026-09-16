@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2 } from 'lucide-react';
+import { Film, Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import type {
   MovieMetadata,
@@ -15,6 +15,7 @@ import { StreamActionButton } from '../components/common/StreamActionButton.js';
 import { MediaStatusBadge } from '../components/common/MediaStatusBadge.js';
 import { Skeleton } from '../components/common/Skeleton.js';
 import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
+import { EpisodeCard } from '../components/common/EpisodeCard.js';
 import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
 import type { HeaderPillShowContext } from '../components/HeaderPill.js';
 
@@ -528,7 +529,12 @@ export function MediaDetailView({
           src={current.background || current.poster}
           alt={current.title}
           priority={true}
-          className="w-full h-full object-cover object-[center_20%] sm:object-center opacity-45 scale-105"
+          className="w-full h-full object-cover object-[center_20%] sm:object-center opacity-100 scale-105"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-700">
+              {isMovie ? <Film className="w-20 h-20 opacity-20" /> : <Tv className="w-20 h-20 opacity-20" />}
+            </div>
+          }
         />
 
         {/* Ambient Gradients for smooth fade into page & pill readability */}
@@ -723,139 +729,33 @@ export function MediaDetailView({
                   const epReq = activeRequests[epFileId];
                   const epProg = progressMap[epFileId];
                   const epPercent = calculateProgressPercent(epProg);
+
                   return (
-                    <motion.div
+                    <EpisodeCard
                       key={ep.id}
-                      whileHover={{ y: -4 }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                      className="group relative flex flex-col justify-between space-y-3 rounded-2xl select-none"
-                    >
-                      {/* Top: 16:9 Landscape Episode Thumbnail */}
-                      <div
-                        onClick={() => {
-                          if (isEpReady) {
-                            onPlayMedia({
-                              fileId: epFileId,
-                              mediaId: current.id,
-                              title: current.title,
-                              subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                              type: 'show',
-                              season: ep.season,
-                              episode: ep.episode,
-                              poster: ep.thumbnail || current.poster,
-                              background: current.background,
-                            });
-                          }
-                        }}
-                        className={`w-full aspect-video rounded-2xl overflow-hidden bg-zinc-900 relative border border-white/10 group-hover:border-white/25 shadow-lg transition-all duration-300 ${
-                          isEpReady ? 'cursor-pointer' : ''
-                        }`}
-                      >
-                        <ImageWithSkeleton
-                          src={ep.thumbnail}
-                          alt={ep.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
-                          fallback={
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-600">
-                              <Tv className="w-6 h-6 mb-1" />
-                              <span className="text-[10px] font-bold">EP {ep.episode}</span>
-                            </div>
-                          }
-                        />
-
-                        {/* Ambient Shadow Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
-
-                        {/* Hover action overlay (Play when ready) */}
-                        {isEpReady && (
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                            <div className="p-3.5 rounded-full bg-red-600 text-white transform group-hover:scale-110 transition-transform shadow-lg flex items-center justify-center">
-                              <Play className="w-4 h-4 fill-current ml-0.5" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Status badge on episode thumbnail (Queued, Preparing %, Ready checkmark) */}
-                        <MediaStatusBadge
-                          activeRequest={epReq}
-                          isReady={isEpReady}
-                          showReadyBadge={true}
-                          className="absolute top-2 right-2 z-10"
-                        />
-
-                        {ep.runtime && (
-                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300 border border-white/5 backdrop-blur-md z-10">
-                            {ep.runtime}m
-                          </span>
-                        )}
-
-                        {epPercent > 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/70 z-10">
-                            <div
-                              className="h-full bg-red-600 rounded-r-full transition-all duration-300"
-                              style={{ width: `${Math.min(100, Math.max(5, epPercent))}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Episode Content: Title Row (with right-aligned request button for unready episodes) and Description */}
-                      <div className="space-y-1.5 px-0.5 flex-1">
-                        <div
-                          className={`flex items-center justify-between gap-3 min-w-0 ${isEpReady ? 'cursor-pointer' : ''}`}
-                          onClick={() => {
-                            if (isEpReady) {
-                              onPlayMedia({
-                                fileId: epFileId,
-                                mediaId: current.id,
-                                title: current.title,
-                                subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
-                                type: 'show',
-                                season: ep.season,
-                                episode: ep.episode,
-                                poster: ep.thumbnail || current.poster,
-                                background: current.background,
-                              });
-                            }
-                          }}
-                        >
-                          <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-red-400 transition-colors min-w-0">
-                            <span className="mr-1.5">{ep.episode}.</span>
-                            <span>{ep.title || `Episode ${ep.episode}`}</span>
-                          </h4>
-
-                          {!isEpReady && (!epReq || epReq.status === 'ready' || epReq.status === 'failed') && (
-                            <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <motion.button
-                                type="button"
-                                whileHover={{ scale: requestingId === epFileId ? 1 : 1.15 }}
-                                whileTap={{ scale: requestingId === epFileId ? 1 : 0.9 }}
-                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                onClick={() => {
-                                  setRequestingId(epFileId);
-                                  onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
-                                }}
-                                disabled={requestingId === epFileId}
-                                className="text-zinc-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50 p-0.5 flex items-center justify-center"
-                                title={requestingId === epFileId ? 'Requesting...' : 'Request Episode'}
-                                aria-label="Request episode"
-                              >
-                                {requestingId === epFileId ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
-                                ) : (
-                                  <PlusCircle className="w-4 h-4" />
-                                )}
-                              </motion.button>
-                            </div>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-                          {ep.description || 'No episode synopsis provided.'}
-                        </p>
-                      </div>
-                    </motion.div>
+                      episode={ep}
+                      isReady={isEpReady}
+                      activeRequest={epReq}
+                      progressPercent={epPercent}
+                      isRequesting={requestingId === epFileId}
+                      onPlay={() => {
+                        onPlayMedia({
+                          fileId: epFileId,
+                          mediaId: current.id,
+                          title: current.title,
+                          subtitle: ep.title ? `S${ep.season}E${ep.episode}: ${ep.title}` : `S${ep.season}E${ep.episode}`,
+                          type: 'show',
+                          season: ep.season,
+                          episode: ep.episode,
+                          poster: ep.thumbnail || current.poster,
+                          background: current.background,
+                        });
+                      }}
+                      onRequest={() => {
+                        setRequestingId(epFileId);
+                        onRequestMedia(epFileId, ep).finally(() => setRequestingId(null));
+                      }}
+                    />
                   );
                 })
               )}
