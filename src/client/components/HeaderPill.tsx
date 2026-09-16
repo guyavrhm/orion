@@ -301,7 +301,7 @@ export function HeaderPill({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={closeSearch}
-            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm touch-none overscroll-none"
+            className="fixed inset-0 z-[45] bg-black/60 backdrop-blur-md touch-none overscroll-none"
           />
         )}
       </AnimatePresence>

@@ -19,8 +19,8 @@ import type { PlayingMediaInfo } from '../types/ui.js';
 import { ApiClient, type StreamInfoResponse } from '../services/api.js';
 import { useMediaSession } from '../hooks/useMediaSession.js';
 import { formatTime, getFriendlyErrorMessage } from '../utils/formatters.js';
-import { parseWebVtt, findActiveCueText, isRtlText, type SubtitleCue } from '../utils/subtitles.js';
-import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
+import { parseWebVtt, findActiveCueText, isRtlText, getLanguageDisplayName, type SubtitleCue } from '../utils/subtitles.js';
+import { useSpatialNavigation, useFocusable, useZoneBack, isBackKey } from '../context/SpatialNavigationContext.js';
 
 interface PlayerMenuItemProps {
   id: string;
@@ -775,7 +775,7 @@ export function HlsPlayer({
       const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
       const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
       const isEnter = e.key === 'Enter' || e.keyCode === 13;
-      const isBack = e.key === 'Escape' || e.keyCode === 10009 || e.keyCode === 461;
+      const isBack = isBackKey(e);
 
       // Spacebar: Universal explicit Play / Pause toggle across all states
       if (isSpace) {
@@ -1188,7 +1188,7 @@ export function HlsPlayer({
                             id={`player-sub-item-${sub.lang}`}
                             index={1 + idx}
                             isSelected={activeSubtitleLang === sub.lang}
-                            label={sub.lang}
+                            label={getLanguageDisplayName(sub.lang)}
                             onSelect={() => {
                               setActiveSubtitleLang(sub.lang);
                               ApiClient.saveSubtitlePreference(media.mediaId, sub.lang);
@@ -1211,7 +1211,7 @@ export function HlsPlayer({
                               index={1 + (streamInfo?.subtitles?.length || 0) + trkIdx}
                               isSelected={activeAudioTrack === trk.id}
                               label={trk.name}
-                              sublabel={trk.lang}
+                              sublabel={getLanguageDisplayName(trk.lang)}
                               onSelect={() => {
                                 setActiveAudioTrack(trk.id);
                                 if (hlsRef.current) hlsRef.current.audioTrack = trk.id;

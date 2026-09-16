@@ -7,6 +7,7 @@ import {
   PLAYER_SECTIONS,
   getGeometricDistance,
   getResponsiveGridColumns,
+  isBackKey,
   type FocusableNode,
   type Direction,
   type SectionConfig,
@@ -325,3 +326,34 @@ describe('Spatial Navigation - Fine-Grained Subscription Model', () => {
     unsubC();
   });
 });
+
+describe('Spatial Navigation - isBackKey Universal Remote Detection', () => {
+  it('should detect Escape key', () => {
+    expect(isBackKey({ key: 'Escape', keyCode: 27 } as KeyboardEvent)).toBe(true);
+  });
+
+  it('should detect Android TV / Fire TV back key (keyCode 4)', () => {
+    expect(isBackKey({ key: 'Back', keyCode: 4 } as KeyboardEvent)).toBe(true);
+    expect(isBackKey({ key: 'GoBack', keyCode: 4 } as KeyboardEvent)).toBe(true);
+  });
+
+  it('should detect Samsung Tizen TV return/back key (keyCode 10009)', () => {
+    expect(isBackKey({ key: '10009', keyCode: 10009 } as KeyboardEvent)).toBe(true);
+  });
+
+  it('should detect LG webOS back key (keyCode 461)', () => {
+    expect(isBackKey({ key: 'XF86Back', keyCode: 461 } as KeyboardEvent)).toBe(true);
+  });
+
+  it('should detect Browser Back key (keyCode 166 or BrowserBack key)', () => {
+    expect(isBackKey({ key: 'BrowserBack', keyCode: 166 } as KeyboardEvent)).toBe(true);
+  });
+
+  it('should return false for regular navigation and action keys', () => {
+    expect(isBackKey({ key: 'ArrowUp', keyCode: 38 } as KeyboardEvent)).toBe(false);
+    expect(isBackKey({ key: 'ArrowDown', keyCode: 40 } as KeyboardEvent)).toBe(false);
+    expect(isBackKey({ key: 'Enter', keyCode: 13 } as KeyboardEvent)).toBe(false);
+    expect(isBackKey({ key: ' ', keyCode: 32 } as KeyboardEvent)).toBe(false);
+  });
+});
+

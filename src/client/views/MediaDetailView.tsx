@@ -94,11 +94,8 @@ export function MediaDetailView({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Scroll detail view to top on mount / media change (preserve background explore view scroll)
+  // Reset selected season on media change
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
     setUserSelectedSeason(null);
   }, [media.id]);
 

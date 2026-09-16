@@ -142,3 +142,74 @@ export function isRtlText(text: string): boolean {
   if (!text) return false;
   return /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 }
+
+/**
+ * Static map of ISO 639-2 canonical language codes to native display names (autonyms).
+ */
+export const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
+  eng: 'English',
+  spa: 'Español',
+  fre: 'Français',
+  ger: 'Deutsch',
+  ita: 'Italiano',
+  por: 'Português',
+  rus: 'Русский',
+  jpn: '日本語',
+  kor: '한국어',
+  chi: '中文',
+  ara: 'العربية',
+  hin: 'हिन्दी',
+  tur: 'Türkçe',
+  heb: 'עברית',
+  vie: 'Tiếng Việt',
+  pol: 'Polski',
+  dut: 'Nederlands',
+  swe: 'Svenska',
+  nor: 'Norsk',
+  dan: 'Dansk',
+  fin: 'Suomi',
+  gre: 'Ελληνικά',
+  cze: 'Čeština',
+  hun: 'Magyar',
+  rum: 'Română',
+  ukr: 'Українська',
+  tha: 'ไทย',
+  ind: 'Bahasa Indonesia',
+  per: 'فارسی',
+  hrv: 'Hrvatski',
+  ice: 'Íslenska',
+  lit: 'Lietuvių',
+  lav: 'Latviešu',
+  mac: 'Македонски',
+  may: 'Bahasa Melayu',
+  slv: 'Slovenščina',
+  srp: 'Srpski',
+};
+
+/**
+ * Formats a language code (e.g. "eng", "heb", "es", "fre") to its full display name.
+ */
+export function getLanguageDisplayName(code?: string | null): string {
+  if (!code) return '';
+  const clean = code.trim().toLowerCase();
+  if (LANGUAGE_DISPLAY_NAMES[clean]) {
+    return LANGUAGE_DISPLAY_NAMES[clean];
+  }
+
+  // Fallback to Intl.DisplayNames if available
+  if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+    try {
+      const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+      const resolved = displayNames.of(clean);
+      if (resolved && resolved !== clean) {
+        return resolved;
+      }
+    } catch {
+      // Ignore invalid language tag error and fallback
+    }
+  }
+
+  // Fallback: capitalize original code
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+

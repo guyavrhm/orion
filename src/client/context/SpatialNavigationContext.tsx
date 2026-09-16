@@ -167,6 +167,28 @@ export function getGeometricDistance(
   }
 }
 
+/**
+ * Universal Remote and Keyboard Back Key Detector.
+ * Supports standard Escape (27), Android TV / Fire TV back (4),
+ * Samsung Tizen (10009 / Return), LG webOS (461), and Browser Back (166).
+ */
+export function isBackKey(e: KeyboardEvent): boolean {
+  const code = e.keyCode || e.which;
+  const key = e.key;
+  return (
+    key === 'Escape' ||
+    key === 'Back' ||
+    key === 'GoBack' ||
+    key === 'BrowserBack' ||
+    key === 'XF86Back' ||
+    code === 27 ||
+    code === 4 ||
+    code === 10009 ||
+    code === 461 ||
+    code === 166
+  );
+}
+
 interface SpatialNavigationProviderProps {
   children: ReactNode;
   initialZone?: string;
@@ -290,23 +312,26 @@ export function SpatialNavigationProvider({
             }
           }
         } else if (
-          newNode.zone === 'explore' &&
-          (newNode.section === 'hero' ||
-            newNode.section === 'header' ||
-            id === 'hero-carousel-card' ||
-            id === 'header-search-trigger')
+          newNode.section === 'header' ||
+          newNode.section === 'detail-header' ||
+          id === 'header-search-trigger' ||
+          id === 'header-back-btn' ||
+          id === 'header-season-dropdown-btn' ||
+          id === 'search-close-btn' ||
+          (newNode.zone === 'explore' && (newNode.section === 'hero' || id === 'hero-carousel-card'))
         ) {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (
-          newNode.zone === 'detail' &&
-          (newNode.section === 'detail-hero-action' ||
-            newNode.section === 'detail-header' ||
-            id === 'header-back-btn' ||
-            id === 'detail-stream-action-btn')
-        ) {
-          const detailContainer = newNode.element.closest('.overflow-y-auto') as HTMLElement | null;
+          // Scroll both detail container (if present) and window all the way to the top
+          const detailContainer =
+            (newNode.element?.closest('.overflow-y-auto') as HTMLElement | null) ||
+            (typeof document !== 'undefined'
+              ? (document.querySelector('.fixed.inset-0.overflow-y-auto') as HTMLElement | null) ||
+                (document.querySelector('.overflow-y-auto') as HTMLElement | null)
+              : null);
           if (detailContainer && detailContainer.scrollTop > 0) {
             detailContainer.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          if (typeof window !== 'undefined' && window.scrollY > 0) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         } else {
           newNode.element.scrollIntoView({
@@ -748,7 +773,7 @@ export function SpatialNavigationProvider({
       const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
       const isRight = e.key === 'ArrowRight' || e.keyCode === 39;
       const isEnter = e.key === 'Enter' || e.keyCode === 13;
-      const isBack = e.key === 'Escape' || e.keyCode === 10009 || e.keyCode === 461;
+      const isBack = isBackKey(e);
 
       if (isInput) {
         if (isBack) {
@@ -823,14 +848,34 @@ export function SpatialNavigationProvider({
       }
     };
 
+    // Samsung Tizen Hardware Key Listener
+    const handleTizenHWKey = (e: Event) => {
+      const customEvent = e as CustomEvent<{ keyName: string }> & { keyName?: string };
+      const keyName = customEvent.keyName || customEvent.detail?.keyName;
+      if (keyName === 'back') {
+        triggerBack();
+      }
+    };
+
+    // Browser / TV PopState Navigation Sync
+    const handlePopState = () => {
+      if (zoneStackRef.current.length > 1) {
+        triggerBack();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    window.addEventListener('tizenhwkey', handleTizenHWKey);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+      window.removeEventListener('tizenhwkey', handleTizenHWKey);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, [navigate, triggerEnter, triggerBack]);
 
