@@ -128,7 +128,7 @@ export function HeaderPill({
     }
   }, [isSearching]);
 
-  // Debounced Search Query
+  // Debounced Search Query with In-Flight Cancellation
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -138,22 +138,31 @@ export function HeaderPill({
     }
 
     setLoading(true);
+    const controller = new AbortController();
+
     const handler = setTimeout(() => {
-      ApiClient.search(query)
+      ApiClient.search(query, controller.signal)
         .then((res) => {
+          if (controller.signal.aborted) return;
           const raw = res.metadata || [];
           setResults(interleaveSearchResults(raw));
           if (res.ready) setSearchResultsReady(res.ready);
           setLoading(false);
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError') || (err instanceof Error && err.name === 'AbortError')) {
+            return;
+          }
           setResults([]);
           setSearchResultsReady({});
           setLoading(false);
         });
-    }, 280);
+    }, 350);
 
-    return () => clearTimeout(handler);
+    return () => {
+      clearTimeout(handler);
+      controller.abort();
+    };
   }, [query]);
 
   // Global Keyboard Shortcuts (Cmd+K / Ctrl+K and Escape)

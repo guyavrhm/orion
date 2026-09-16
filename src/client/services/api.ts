@@ -61,8 +61,8 @@ export class ApiClient {
   }
 
   // 3. Search
-  static async search(query: string): Promise<MediaResponse<(MovieMetadata | ShowMetadata)[]>> {
-    return this.fetchJson<MediaResponse<(MovieMetadata | ShowMetadata)[]>>(`/api/search?q=${encodeURIComponent(query)}`);
+  static async search(query: string, signal?: AbortSignal): Promise<MediaResponse<(MovieMetadata | ShowMetadata)[]>> {
+    return this.fetchJson<MediaResponse<(MovieMetadata | ShowMetadata)[]>>(`/api/search?q=${encodeURIComponent(query)}`, { signal });
   }
 
   // 4. Queue State
