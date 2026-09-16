@@ -18,6 +18,7 @@ import { ImageWithSkeleton } from '../components/common/ImageWithSkeleton.js';
 import { EpisodeCard } from '../components/common/EpisodeCard.js';
 import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
 import type { HeaderPillShowContext } from '../components/HeaderPill.js';
+import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
 
 interface MediaDetailViewProps {
   media: MovieMetadata | ShowMetadata;
@@ -52,14 +53,32 @@ export function MediaDetailView({
   onShowNavContextChange,
   onDragProgress,
 }: MediaDetailViewProps) {
+  const { pushZone, popZone, activeZone, setFocused } = useSpatialNavigation();
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
   const [userSelectedSeason, setUserSelectedSeason] = useState<number | null>(null);
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
   const [useDropdown, setUseDropdown] = useState(false);
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
+
+  const handleDismissSeasonDropdown = useCallback(() => {
+    popZone('season-menu');
+    setShowSeasonDropdown(false);
+    setFocused('detail-season-dropdown-btn', true);
+  }, [popZone, setFocused]);
+
+  // Manage spatial navigation detail zone on view mount/unmount
+  useEffect(() => {
+    pushZone('detail', 'detail-stream-action-btn');
+    return () => {
+      popZone('detail');
+    };
+  }, [pushZone, popZone]);
+
+  // Deterministic stack-based zone back handlers
+  useZoneBack('detail', onBack, isActive);
+  useZoneBack('season-menu', handleDismissSeasonDropdown, showSeasonDropdown);
   const headerRowRef = useRef<HTMLDivElement | null>(null);
-  const activeSeasonItemRef = useRef<HTMLButtonElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [isMobile, setIsMobile] = useState<boolean>(() =>
@@ -74,18 +93,6 @@ export function MediaDetailView({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Scroll to active season inside dropdown ONLY once when opened
-  useEffect(() => {
-    if (showSeasonDropdown) {
-      requestAnimationFrame(() => {
-        activeSeasonItemRef.current?.scrollIntoView({
-          block: 'nearest',
-          behavior: 'instant' as ScrollBehavior,
-        });
-      });
-    }
-  }, [showSeasonDropdown]);
 
   // Scroll detail view to top on mount / media change (preserve background explore view scroll)
   useEffect(() => {
@@ -217,17 +224,6 @@ export function MediaDetailView({
     };
   }, [isMobile, isActive, onBack, dragX]);
 
-  // Dismiss season dropdown on Escape
-  useEffect(() => {
-    if (!showSeasonDropdown) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowSeasonDropdown(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSeasonDropdown]);
 
   useEffect(() => {
     setDetailedMedia(media);
@@ -336,7 +332,7 @@ export function MediaDetailView({
     metaItems.push(<span key="seasons">{seasonsCount}</span>);
   }
   if (current.rating) {
-    const ratingDisplay = typeof current.rating === 'number' ? current.rating.toFixed(1) : current.rating;
+    const ratingDisplay = current.rating;
     metaItems.push(
       <span key="rating" className="inline-flex items-center gap-1 text-amber-400 font-semibold">
         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 inline" />
@@ -389,27 +385,6 @@ export function MediaDetailView({
 
   const handleSelectSeason = useCallback((season: number) => {
     setUserSelectedSeason(season);
-
-    // Calculate target position before DOM height changes from episode re-rendering
-    if (headerRowRef.current) {
-      const container = scrollContainerRef.current;
-      const rect = headerRowRef.current.getBoundingClientRect();
-      const pillHeader = document.querySelector('header');
-      const navBottom = pillHeader ? Math.round(pillHeader.getBoundingClientRect().bottom) : 64;
-      const currentScroll = container ? container.scrollTop : window.scrollY;
-      const targetY = Math.max(0, currentScroll + rect.top - (navBottom + 12));
-
-      // Scroll if the user is scrolled past or at the episodes header
-      if (rect.top <= navBottom + 20 || currentScroll > targetY) {
-        requestAnimationFrame(() => {
-          if (container) {
-            container.scrollTo({ top: targetY, behavior: 'smooth' });
-          } else {
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-          }
-        });
-      }
-    }
   }, []);
 
   // Sync show navigation context to top HeaderPill
@@ -435,6 +410,15 @@ export function MediaDetailView({
       onShowNavContextChange?.(null);
     };
   }, [onShowNavContextChange]);
+
+  // Synchronize season dropdown modal zone with spatial navigation
+  useEffect(() => {
+    if (!showSeasonDropdown) return;
+    pushZone('season-menu', `detail-dropdown-season-${activeSeason}`);
+    return () => {
+      popZone('season-menu');
+    };
+  }, [showSeasonDropdown, activeSeason, pushZone, popZone]);
 
   const activeSeasonNum = globalTarget.season;
   const activeEpisodeNum = globalTarget.episode;
@@ -617,18 +601,11 @@ export function MediaDetailView({
               {seasons.length > 1 && (
                 useDropdown ? (
                   <div className="relative flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setShowSeasonDropdown((prev) => !prev)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-2xl glass-panel bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-white transition backdrop-blur-md cursor-pointer"
-                    >
-                      <span>Season {activeSeason}</span>
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
-                          showSeasonDropdown ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
+                    <SeasonDropdownTrigger
+                      activeSeason={activeSeason}
+                      isOpen={showSeasonDropdown}
+                      onToggle={() => setShowSeasonDropdown((prev) => !prev)}
+                    />
 
                     <AnimatePresence>
                       {showSeasonDropdown && (
@@ -645,24 +622,18 @@ export function MediaDetailView({
                             className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
                           >
                             <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
-                              {seasons.map((s) => (
-                                <button
+                              {seasons.map((s, idx) => (
+                                <DropdownSeasonItem
                                   key={s}
-                                  ref={activeSeason === s ? activeSeasonItemRef : null}
-                                  type="button"
-                                  onClick={() => {
+                                  season={s}
+                                  index={idx}
+                                  isActive={activeSeason === s}
+                                  onSelect={() => {
                                     handleSelectSeason(s);
                                     setShowSeasonDropdown(false);
                                   }}
-                                  className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                    activeSeason === s
-                                      ? 'bg-red-600 text-white'
-                                      : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                                  }`}
-                                >
-                                  <span>Season {s}</span>
-                                  {activeSeason === s && <Check className="w-3.5 h-3.5" />}
-                                </button>
+                                  onDismiss={handleDismissSeasonDropdown}
+                                />
                               ))}
                             </div>
                           </motion.div>
@@ -672,32 +643,15 @@ export function MediaDetailView({
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md overflow-x-auto scrollbar-none flex-shrink-0">
-                    {seasons.map((s) => {
-                      const isActive = activeSeason === s;
-                      return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            handleSelectSeason(s);
-                          }}
-                          className={`relative px-4 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
-                            isActive
-                              ? 'text-white'
-                              : 'text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeSeasonIndicator"
-                              className="absolute inset-0 bg-red-600 rounded-xl shadow-md"
-                              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                            />
-                          )}
-                          <span className="relative z-10">Season {s}</span>
-                        </button>
-                      );
-                    })}
+                    {seasons.map((s, idx) => (
+                      <SeasonTabButton
+                        key={s}
+                        season={s}
+                        index={idx}
+                        isActive={activeSeason === s}
+                        onSelect={() => handleSelectSeason(s)}
+                      />
+                    ))}
                   </div>
                 )
               )}
@@ -723,7 +677,7 @@ export function MediaDetailView({
                   </div>
                 ))
               ) : (
-                currentSeasonEpisodes.map((ep) => {
+                currentSeasonEpisodes.map((ep, idx) => {
                   const epFileId = `${current.id}_s${ep.season}_e${ep.episode}`;
                   const isEpReady = !!readyMap[epFileId] || activeRequests[epFileId]?.status === 'ready';
                   const epReq = activeRequests[epFileId];
@@ -733,6 +687,10 @@ export function MediaDetailView({
                   return (
                     <EpisodeCard
                       key={ep.id}
+                      focusId={`detail-ep-${ep.id || `${ep.season}_${ep.episode}`}`}
+                      zone="detail"
+                      section="detail-episodes"
+                      index={idx}
                       episode={ep}
                       isReady={isEpReady}
                       activeRequest={epReq}
@@ -764,6 +722,121 @@ export function MediaDetailView({
         )}
       </div>
     </motion.div>
+  );
+}
+
+interface SeasonTabButtonProps {
+  season: number;
+  index: number;
+  isActive: boolean;
+  onSelect: () => void;
+}
+
+function SeasonTabButton({ season, index, isActive, onSelect }: SeasonTabButtonProps) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: `detail-season-${season}`,
+    zone: 'detail',
+    section: 'detail-seasons',
+    index,
+    priority: isActive ? 50 : 0,
+    onEnter: onSelect,
+  });
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onSelect}
+      className={`relative px-4 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer spatial-focus-indicator ${
+        isSpatialFocused ? 'spatial-focus-pill ring-2 ring-white/90 scale-105' : ''
+      } ${isActive ? 'text-white' : 'text-zinc-400 hover:text-white'}`}
+    >
+      {isActive && (
+        <motion.div
+          layoutId="activeSeasonIndicator"
+          className="absolute inset-0 bg-red-600 rounded-xl shadow-md"
+          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        />
+      )}
+      <span className="relative z-10">Season {season}</span>
+    </button>
+  );
+}
+
+function SeasonDropdownTrigger({
+  activeSeason,
+  isOpen,
+  onToggle,
+}: {
+  activeSeason: number;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: 'detail-season-dropdown-btn',
+    zone: 'detail',
+    section: 'detail-seasons',
+    index: 0,
+    priority: 50,
+    onEnter: onToggle,
+  });
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onToggle}
+      className={`flex items-center gap-2 px-4 py-2 rounded-2xl glass-panel bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+        isSpatialFocused ? 'spatial-focus-pill ring-2 ring-white/90 scale-105' : ''
+      }`}
+    >
+      <span>Season {activeSeason}</span>
+      <ChevronDown
+        className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+          isOpen ? 'rotate-180' : ''
+        }`}
+      />
+    </button>
+  );
+}
+
+export function DropdownSeasonItem({
+  season,
+  index,
+  isActive,
+  onSelect,
+}: {
+  season: number;
+  index: number;
+  isActive: boolean;
+  onSelect: () => void;
+  onDismiss?: () => void;
+}) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: `detail-dropdown-season-${season}`,
+    zone: 'season-menu',
+    section: 'dropdown-items',
+    index,
+    priority: isActive ? 50 : 0,
+    onEnter: onSelect,
+  });
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onSelect}
+      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer spatial-focus-indicator ${
+        isActive
+          ? 'bg-red-600 text-white'
+          : isSpatialFocused
+          ? 'bg-white/20 text-white'
+          : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+      } ${isSpatialFocused ? 'spatial-focus-pill ring-2 ring-white/90' : ''}`}
+    >
+      <span>Season {season}</span>
+      {isActive && <Check className="w-3.5 h-3.5" />}
+    </button>
   );
 }
 

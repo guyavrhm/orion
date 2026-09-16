@@ -18,6 +18,7 @@ export interface CardMediaArtworkProps {
   bottomRightBadge?: React.ReactNode;
   fallback?: React.ReactNode;
   className?: string;
+  isFocused?: boolean;
 }
 
 export function CardMediaArtwork({
@@ -34,6 +35,7 @@ export function CardMediaArtwork({
   bottomRightBadge,
   fallback,
   className = '',
+  isFocused = false,
 }: CardMediaArtworkProps) {
   const isMovie = type === 'movie';
 
@@ -61,12 +63,18 @@ export function CardMediaArtwork({
     <div
       className={`${
         aspect === 'poster' ? 'aspect-[2/3]' : 'aspect-video'
-      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border border-white/10 group-hover:border-white/25 shadow-lg group-hover:shadow-2xl transition-all duration-300 ${className}`}
+      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border shadow-lg transition-all duration-300 ${
+        isFocused
+          ? 'border-white/90 ring-2 ring-white/90 shadow-2xl'
+          : 'border-white/10 group-hover:border-white/25 group-hover:shadow-2xl'
+      } ${className}`}
     >
       <ImageWithSkeleton
         src={src}
         alt={alt}
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+        className={`w-full h-full object-cover transition-transform duration-500 ${
+          isFocused ? 'scale-105 opacity-100' : 'opacity-90 group-hover:scale-105 group-hover:opacity-100'
+        }`}
         fallback={fallback || defaultFallback}
       />
 
@@ -80,9 +88,15 @@ export function CardMediaArtwork({
             e.stopPropagation();
             onPlayDirect();
           }}
-          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]"
+          className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center backdrop-blur-[2px] ${
+            isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          }`}
         >
-          <div className="p-3.5 rounded-full bg-red-600 text-white transform group-hover:scale-110 transition-transform shadow-lg flex items-center justify-center">
+          <div
+            className={`p-3.5 rounded-full bg-red-600 text-white transform transition-transform shadow-lg flex items-center justify-center ${
+              isFocused ? 'scale-110' : 'group-hover:scale-110'
+            }`}
+          >
             <Play className="w-4 h-4 fill-current ml-0.5" />
           </div>
         </div>

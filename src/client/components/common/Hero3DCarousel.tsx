@@ -4,6 +4,8 @@ import { motion, type PanInfo } from 'motion/react';
 import type { MovieMetadata, ShowMetadata } from '../../../main/types/index.js';
 import { ImageWithSkeleton } from './ImageWithSkeleton.js';
 
+import { useFocusable, useSpatialNavigation } from '../../context/SpatialNavigationContext.js';
+
 interface Hero3DCarouselProps {
   items: (MovieMetadata | ShowMetadata)[];
   activeIndex?: number;
@@ -35,6 +37,7 @@ export function Hero3DCarousel({
   className = '',
 }: Hero3DCarouselProps) {
   const length = items.length;
+  const activeItem = items[activeIndex];
 
   const navigate = useCallback(
     (step: number) => {
@@ -44,17 +47,20 @@ export function Hero3DCarousel({
     [activeIndex, length, onActiveIndexChange]
   );
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.defaultPrevented) return;
-      if (document.querySelector('video') || document.querySelector('[role="dialog"]')) return;
-      if (e.key === 'ArrowLeft') navigate(-1);
-      else if (e.key === 'ArrowRight') navigate(1);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  const { ref: heroRef, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: 'hero-carousel-card',
+    zone: 'explore',
+    section: 'hero',
+    autoFocus: true,
+    priority: 100,
+    onLeft: () => navigate(-1),
+    onRight: () => navigate(1),
+    onEnter: () => {
+      if (activeItem) {
+        onSelectMedia(activeItem);
+      }
+    },
+  });
 
   if (!items || items.length === 0) return null;
 
@@ -109,8 +115,10 @@ export function Hero3DCarousel({
                   pointerEvents: abs > 2 ? 'none' : 'auto',
                 }}
                 onClick={() => !isCenter && onActiveIndexChange?.(idx)}
-                className={`absolute w-[84vw] sm:w-[72vw] md:w-[64vw] lg:w-[58vw] max-w-5xl h-full rounded-3xl overflow-hidden glass-panel border border-white/10 shadow-2xl group ${
-                  isCenter ? 'cursor-default ring-1 ring-white/15' : 'cursor-pointer hover:border-white/25'
+                className={`absolute w-[84vw] sm:w-[72vw] md:w-[64vw] lg:w-[58vw] max-w-5xl h-full rounded-3xl overflow-hidden glass-panel border shadow-2xl group ${
+                  isCenter
+                    ? 'cursor-default ring-1 ring-white/15 border-white/10'
+                    : 'cursor-pointer hover:border-white/25 border-white/10'
                 }`}
               >
                 {/* Background Artwork */}
@@ -162,7 +170,7 @@ export function Hero3DCarousel({
                           <span className="text-zinc-600 select-none">•</span>
                           <span className="inline-flex items-center gap-1 text-amber-400 font-bold">
                             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span>{typeof item.rating === 'number' ? item.rating.toFixed(1) : item.rating}</span>
+                            <span>{item.rating}</span>
                           </span>
                         </>
                       )}
@@ -183,11 +191,16 @@ export function Hero3DCarousel({
                     <div className="flex items-center gap-3 pt-2">
                       <button
                         type="button"
+                        ref={isCenter ? heroRef : undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectMedia(item);
                         }}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-2xl glass-panel bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs sm:text-sm font-bold transition backdrop-blur-md cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl glass-panel border text-white text-xs sm:text-sm font-bold transition-all backdrop-blur-md cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                          isSpatialFocused
+                            ? 'bg-white/25 border-white/90 ring-2 ring-white/90 scale-[1.02]'
+                            : 'bg-white/10 hover:bg-white/20 border-white/15'
+                        }`}
                       >
                         <Info className="w-4 h-4 text-zinc-300" />
                         <span>Details</span>

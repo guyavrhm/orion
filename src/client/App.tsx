@@ -21,11 +21,12 @@ import { ExploreView } from './views/ExploreView.js';
 import { ExploreSkeleton } from './views/ExploreSkeleton.js';
 import { MediaDetailView } from './views/MediaDetailView.js';
 
-// Core UI Components
 import { HeaderPill, type HeaderPillShowContext } from './components/HeaderPill.js';
 import { HlsPlayer } from './components/HlsPlayer.js';
+import { SpatialNavigationProvider, useSpatialNavigation } from './context/SpatialNavigationContext.js';
 
-export function App() {
+function AppContent() {
+  const { popZone } = useSpatialNavigation();
   // Catalogs & Playback Data State
   const [movies, setMovies] = useState<MovieMetadata[]>([]);
   const [shows, setShows] = useState<ShowMetadata[]>([]);
@@ -189,6 +190,10 @@ export function App() {
   // Pre-validate stream availability before opening player to prevent pre-playback crashes
   const handlePlayMedia = useCallback(async (info: PlayingMediaInfo) => {
     try {
+      if (!selectedMedia) {
+        // Save current explore view scroll position before entering player directly
+        exploreScrollYRef.current = window.scrollY;
+      }
       const streamInfo = await ApiClient.getStreamInfo(info.fileId);
       if (streamInfo && streamInfo.url) {
         setPlayingMedia(info);
@@ -200,7 +205,7 @@ export function App() {
         setToast(friendlyMsg);
       }
     }
-  }, []);
+  }, [selectedMedia]);
 
   // Update Playback Progress
   const handleProgressUpdate = useCallback(async (fileId: string, timestamp: number, duration: number) => {
@@ -341,7 +346,7 @@ export function App() {
         });
       }
     };
-  }, [Boolean(selectedMedia), Boolean(playingMedia)]);
+  }, [Boolean(selectedMedia || playingMedia)]);
 
   const handleSelectMedia = useCallback((media: MovieMetadata | ShowMetadata) => {
     setShowNavContext(null);
@@ -357,8 +362,9 @@ export function App() {
   const handleBack = useCallback(() => {
     setShowNavContext(null);
     setDetailDragProgress(0);
+    popZone('detail');
     setSelectedMedia(null);
-  }, []);
+  }, [popZone]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-red-600 selection:text-white overflow-x-hidden">
@@ -444,7 +450,10 @@ export function App() {
               key={playingMedia.fileId}
               media={playingMedia}
               initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
-              onClose={() => setPlayingMedia(null)}
+              onClose={() => {
+                popZone('player');
+                setPlayingMedia(null);
+              }}
               onProgressUpdate={handleProgressUpdate}
               onNextEpisode={nextEpisodeMeta ? handleNextEpisode : undefined}
             />
@@ -452,6 +461,14 @@ export function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <SpatialNavigationProvider initialZone="explore">
+      <AppContent />
+    </SpatialNavigationProvider>
   );
 }
 

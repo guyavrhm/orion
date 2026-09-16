@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '../../main/types/index.js';
 import { ApiClient } from '../services/api.js';
 import { ImageWithSkeleton } from './common/ImageWithSkeleton.js';
+import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
+import { DropdownSeasonItem } from '../views/MediaDetailView.js';
 
 export interface HeaderPillShowContext {
   title: string;
@@ -54,6 +56,11 @@ export function HeaderPill({
   showContext = null,
   dragProgress = 0,
 }: HeaderPillProps) {
+  const { pushZone, popZone, setFocused, activeZone } = useSpatialNavigation();
+  const isDetail = Boolean(onBack);
+  const headerZone = isDetail ? 'detail' : 'explore';
+  const headerSection = isDetail ? 'detail-header' : 'header';
+
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [query, setQuery] = useState<string>('');
   const [results, setResults] = useState<(MovieMetadata | ShowMetadata)[]>([]);
@@ -64,59 +71,95 @@ export function HeaderPill({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const activeNavSeasonItemRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    setLogoError(false);
-  }, [showContext?.logo]);
-
-  // Scroll to active season inside nav dropdown ONLY once when opened
-  useEffect(() => {
-    if (showNavSeasonDropdown) {
-      requestAnimationFrame(() => {
-        activeNavSeasonItemRef.current?.scrollIntoView({
-          block: 'nearest',
-          behavior: 'instant' as ScrollBehavior,
-        });
-      });
-    }
-  }, [showNavSeasonDropdown]);
-
-  // Close nav season dropdown on Escape
-  useEffect(() => {
-    if (!showNavSeasonDropdown) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowNavSeasonDropdown(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNavSeasonDropdown]);
-
-  // Close nav season dropdown if scrolled back up
-  useEffect(() => {
-    if (!showContext?.isScrolledPast) {
-      setShowNavSeasonDropdown(false);
-    }
-  }, [showContext?.isScrolledPast]);
 
   const openSearch = useCallback((e?: React.SyntheticEvent) => {
     e?.stopPropagation();
     setShowNavSeasonDropdown(false);
     setIsSearching(true);
+    pushZone('search');
     // Synchronously focus the input within the user touch/click gesture tick for iOS/Android
     if (inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, []);
+  }, [pushZone]);
 
   const closeSearch = useCallback((e?: React.SyntheticEvent) => {
     e?.stopPropagation();
     inputRef.current?.blur();
     setIsSearching(false);
-  }, []);
+    popZone('search');
+  }, [popZone]);
+
+  const handleDismissNavSeasonDropdown = useCallback(() => {
+    popZone('season-menu');
+    setShowNavSeasonDropdown(false);
+    setFocused('header-season-dropdown-btn', true);
+  }, [popZone, setFocused]);
+
+  const isNavSeasonVisible = Boolean(showContext?.isScrolledPast && showContext.seasons.length > 1);
+
+  const { ref: navSeasonBtnRef, isSpatialFocused: isNavSeasonBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'header-season-dropdown-btn',
+    zone: headerZone,
+    section: headerSection,
+    index: isDetail ? 1 : 0,
+    disabled: !isNavSeasonVisible,
+    onEnter: () => setShowNavSeasonDropdown((prev) => !prev),
+  });
+
+  const { ref: searchBtnRef, isSpatialFocused: isSearchBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'header-search-trigger',
+    zone: headerZone,
+    section: headerSection,
+    index: isDetail ? 1 : 0,
+    disabled: isNavSeasonVisible,
+    onEnter: openSearch,
+  });
+
+  const { ref: backBtnRef, isSpatialFocused: isBackBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'header-back-btn',
+    zone: 'detail',
+    section: 'detail-header',
+    index: 0,
+    disabled: !onBack,
+    onEnter: onBack,
+  });
+
+  const { ref: inputFocusRef, isSpatialFocused: isInputFocused } = useFocusable<HTMLInputElement>({
+    id: 'search-input',
+    zone: 'search',
+    section: 'search-header',
+    index: 0,
+    priority: 100,
+    onFocus: () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    },
+    onBlur: () => {
+      if (inputRef.current && document.activeElement === inputRef.current) {
+        inputRef.current.blur();
+      }
+    },
+  });
+
+  const setCombinedInputRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+      inputFocusRef(el);
+    },
+    [inputFocusRef]
+  );
+
+  const { ref: closeBtnFocusRef, isSpatialFocused: isCloseBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'search-close-btn',
+    zone: 'search',
+    section: 'search-header',
+    index: 1,
+    priority: 0,
+    onEnter: closeSearch,
+  });
 
   // Clear query and search results when closed
   useEffect(() => {
@@ -165,25 +208,22 @@ export function HeaderPill({
     };
   }, [query]);
 
-  // Global Keyboard Shortcuts (Cmd+K / Ctrl+K and Escape)
+  // Deterministic stack-based zone back handlers
+  useZoneBack('search', closeSearch, isSearching);
+  useZoneBack('season-menu', handleDismissNavSeasonDropdown, showNavSeasonDropdown);
+
+  // Global Keyboard Shortcut (Cmd+K / Ctrl+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         openSearch();
       }
-      if (e.key === 'Escape') {
-        if (isSearching) {
-          e.preventDefault();
-          e.stopPropagation();
-          closeSearch();
-        }
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearching, openSearch, closeSearch]);
+  }, [openSearch]);
 
   // Lock background body scroll when search is active & preserve scroll position
   useEffect(() => {
@@ -235,9 +275,18 @@ export function HeaderPill({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Synchronize navbar season dropdown modal zone with spatial navigation
+  useEffect(() => {
+    if (!showNavSeasonDropdown || !showContext) return;
+    pushZone('season-menu', `detail-dropdown-season-${showContext.activeSeason}`);
+    return () => {
+      popZone('season-menu');
+    };
+  }, [showNavSeasonDropdown, showContext?.activeSeason, pushZone, popZone]);
+
   const handleSelect = (item: MovieMetadata | ShowMetadata) => {
+    closeSearch();
     onSelectMedia(item);
-    setIsSearching(false);
   };
 
   return (
@@ -251,7 +300,7 @@ export function HeaderPill({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            onClick={() => setIsSearching(false)}
+            onClick={closeSearch}
             className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm touch-none overscroll-none"
           />
         )}
@@ -263,7 +312,7 @@ export function HeaderPill({
         className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-xl"
       >
         <header
-          className={`relative flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 overflow-hidden ${
+          className={`relative flex items-center justify-between rounded-full glass-panel backdrop-blur-2xl border shadow-2xl px-4 h-12 w-full transition-colors duration-200 ${
             toast
               ? 'border-white/10 bg-zinc-900/90'
               : isSearching
@@ -325,20 +374,23 @@ export function HeaderPill({
                           initial={{ opacity: 0, width: 0 }}
                           animate={{
                             opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1,
-                            width: dragProgress > 0 ? Math.max(0, (1 - dragProgress) * 44) : 44,
+                            width: dragProgress > 0 ? Math.max(0, (1 - dragProgress) * 52) : 'auto',
                           }}
                           exit={{ opacity: 0, width: 0 }}
                           transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                          className="flex items-center overflow-hidden flex-shrink-0"
+                          className="flex items-center flex-shrink-0"
                         >
                           <div className="flex items-center gap-2 pr-2.5 flex-shrink-0">
                             <button
+                              ref={backBtnRef as any}
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onBack();
                               }}
-                              className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                              className={`p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer ${
+                                isBackBtnFocused ? 'spatial-focus-pill bg-white/20 text-white ring-2 ring-white/90' : ''
+                              }`}
                               title="Back (Esc)"
                             >
                               <ArrowLeft className="w-4 h-4" />
@@ -408,13 +460,16 @@ export function HeaderPill({
                         className="relative flex-shrink-0"
                       >
                         <button
+                          ref={navSeasonBtnRef as any}
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowNavSeasonDropdown((prev) => !prev);
                           }}
                           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                            showNavSeasonDropdown
+                            isNavSeasonBtnFocused
+                              ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white'
+                              : showNavSeasonDropdown
                               ? 'bg-white/10 text-white'
                               : 'hover:bg-white/10 text-zinc-300 hover:text-white'
                           }`}
@@ -430,6 +485,7 @@ export function HeaderPill({
                       </motion.div>
                     ) : (
                       <motion.button
+                        ref={searchBtnRef as any}
                         key="pill-search-trigger"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -437,7 +493,9 @@ export function HeaderPill({
                         transition={{ duration: 0.2, ease: 'easeOut' }}
                         type="button"
                         onClick={openSearch}
-                        className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
+                        className={`p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center ${
+                          isSearchBtnFocused ? 'spatial-focus-pill bg-white/20 text-white ring-2 ring-white/90' : ''
+                        }`}
                         title="Search (⌘K)"
                       >
                         <Search className="w-4 h-4" />
@@ -465,18 +523,26 @@ export function HeaderPill({
                   )}
 
                   <input
-                    ref={inputRef}
+                    ref={setCombinedInputRef}
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    onFocus={() => {
+                      if (activeZone === 'search') {
+                        setFocused('search-input', false);
+                      }
+                    }}
                     placeholder="Search movies, TV shows, actors..."
                     className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm font-medium focus:outline-none min-w-0"
                   />
 
                   <button
+                    ref={closeBtnFocusRef as any}
                     type="button"
                     onClick={closeSearch}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                    className={`p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer ${
+                      isCloseBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+                    }`}
                     title="Close (Esc)"
                   >
                     <X className="w-4 h-4" />
@@ -504,24 +570,18 @@ export function HeaderPill({
                 className="absolute right-0 top-14 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
               >
                 <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
-                  {showContext.seasons.map((s) => (
-                    <button
+                  {showContext.seasons.map((s, idx) => (
+                    <DropdownSeasonItem
                       key={s}
-                      ref={showContext.activeSeason === s ? activeNavSeasonItemRef : null}
-                      type="button"
-                      onClick={() => {
+                      season={s}
+                      index={idx}
+                      isActive={showContext.activeSeason === s}
+                      onSelect={() => {
                         showContext.onSelectSeason(s);
                         setShowNavSeasonDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                        showContext.activeSeason === s
-                          ? 'bg-red-600 text-white'
-                          : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <span>Season {s}</span>
-                      {showContext.activeSeason === s && <Check className="w-3.5 h-3.5" />}
-                    </button>
+                      onDismiss={handleDismissNavSeasonDropdown}
+                    />
                   ))}
                 </div>
               </motion.div>
@@ -545,66 +605,19 @@ export function HeaderPill({
                 className="max-h-[60vh] overflow-y-auto overscroll-contain p-2.5 space-y-1"
               >
                 {results.length > 0 ? (
-                  results.map((item) => {
-                    const isMovie = item.type === 'movie';
-                    const isReady =
-                      !!readyMap[item.id] ||
-                      !!searchResultsReady[item.id] ||
-                      activeRequests[item.id]?.status === 'ready';
-
+                  results.map((item, index) => {
                     return (
-                      <motion.div
+                      <SearchResultItem
                         key={item.id}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ type: 'spring', stiffness: 600, damping: 35 }}
-                        onClick={() => handleSelect(item)}
-                        className="group flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-zinc-800/80 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Poster Thumbnail */}
-                          <div className="w-10 h-14 rounded-xl bg-zinc-800 overflow-hidden flex-shrink-0">
-                            <ImageWithSkeleton
-                              src={item.poster}
-                              alt={item.title}
-                              fallback={
-                                <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                                  {isMovie ? <Film className="w-5 h-5" /> : <Tv className="w-5 h-5" />}
-                                </div>
-                              }
-                            />
-                          </div>
-
-                          {/* Title & Metadata */}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-red-400 transition-colors truncate">
-                                {item.title}
-                              </h4>
-                              <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-white/5 flex-shrink-0">
-                                {isMovie ? 'Movie' : 'Show'}
-                              </span>
-                              {isReady && isMovie && (
-                                <span className="p-0.5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
-                                  <Check className="w-2.5 h-2.5 stroke-[2.5]" />
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2.5 text-xs text-zinc-400 mt-1">
-                              {item.year && <span className="text-[11px] font-medium">{item.year}</span>}
-                              {item.rating && (
-                                <span className="flex items-center gap-1 text-amber-400 font-semibold text-[11px]">
-                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                  <span>{item.rating}</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors flex-shrink-0 mr-1" />
-                      </motion.div>
+                        item={item}
+                        index={index}
+                        isReady={
+                          !!readyMap[item.id] ||
+                          !!searchResultsReady[item.id] ||
+                          activeRequests[item.id]?.status === 'ready'
+                        }
+                        onSelect={() => handleSelect(item)}
+                      />
                     );
                   })
                 ) : query.trim() && !loading ? (
@@ -618,6 +631,80 @@ export function HeaderPill({
         </AnimatePresence>
       </div>
     </>
+  );
+}
+
+interface SearchResultItemProps {
+  item: MovieMetadata | ShowMetadata;
+  index: number;
+  isReady: boolean;
+  onSelect: () => void;
+}
+
+function SearchResultItem({ item, index, isReady, onSelect }: SearchResultItemProps) {
+  const isMovie = item.type === 'movie';
+  const { ref, isSpatialFocused } = useFocusable<HTMLDivElement>({
+    id: `search-result-${item.id}`,
+    zone: 'search',
+    section: 'search-results',
+    index,
+    onEnter: onSelect,
+  });
+
+  return (
+    <div
+      ref={ref}
+      onClick={onSelect}
+      className={`group flex items-center justify-between gap-3 p-2.5 rounded-2xl cursor-pointer ${
+        isSpatialFocused
+          ? 'bg-zinc-800 ring-2 ring-white/90 shadow-lg'
+          : 'hover:bg-zinc-800/80'
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Poster Thumbnail */}
+        <div className="w-10 h-14 rounded-xl bg-zinc-800 overflow-hidden flex-shrink-0">
+          <ImageWithSkeleton
+            src={item.poster}
+            alt={item.title}
+            fallback={
+              <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                {isMovie ? <Film className="w-5 h-5" /> : <Tv className="w-5 h-5" />}
+              </div>
+            }
+          />
+        </div>
+
+        {/* Title & Metadata */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-red-400 truncate">
+              {item.title}
+            </h4>
+            <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-white/5 flex-shrink-0">
+              {isMovie ? 'Movie' : 'Show'}
+            </span>
+            {isReady && isMovie && (
+              <span className="p-0.5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+                <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5 text-xs text-zinc-400 mt-1">
+            {item.year && <span className="text-[11px] font-medium">{item.year}</span>}
+            {item.rating && (
+              <span className="flex items-center gap-1 text-amber-400 font-semibold text-[11px]">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span>{item.rating}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-white flex-shrink-0 mr-1" />
+    </div>
   );
 }
 

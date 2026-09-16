@@ -111,10 +111,7 @@ export function calculateProgressPercent(
   fallbackDuration?: number
 ): number {
   if (prog) {
-    if (prog.progressPercent != null && prog.progressPercent > 0) {
-      return Math.min(100, prog.progressPercent);
-    }
-    const duration = prog.duration || prog.runtime || 0;
+    const duration = prog.runtime || 0;
     if (duration > 0 && prog.timestamp > 0) {
       return Math.min(100, (prog.timestamp / duration) * 100);
     }

@@ -3,8 +3,6 @@ import Hls from 'hls.js';
 import {
   Play,
   Pause,
-  Volume2,
-  VolumeX,
   Maximize,
   Minimize,
   RotateCcw,
@@ -14,7 +12,6 @@ import {
   ArrowLeft,
   Cast,
   Check,
-  Sliders,
   AlertCircle,
   SkipForward,
 } from 'lucide-react';
@@ -23,6 +20,109 @@ import { ApiClient, type StreamInfoResponse } from '../services/api.js';
 import { useMediaSession } from '../hooks/useMediaSession.js';
 import { formatTime, getFriendlyErrorMessage } from '../utils/formatters.js';
 import { parseWebVtt, findActiveCueText, isRtlText, type SubtitleCue } from '../utils/subtitles.js';
+import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
+
+interface PlayerMenuItemProps {
+  id: string;
+  index: number;
+  isSelected: boolean;
+  label: string;
+  sublabel?: string;
+  onSelect: () => void;
+  onDismiss: () => void;
+}
+
+function PlayerMenuItem({
+  id,
+  index,
+  isSelected,
+  label,
+  sublabel,
+  onSelect,
+  onDismiss,
+}: PlayerMenuItemProps) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id,
+    zone: 'player-menu',
+    section: 'player-menu-subtitles',
+    index,
+    priority: isSelected ? 10 : 0,
+    onEnter: () => {
+      onSelect();
+      onDismiss();
+    },
+  });
+
+  return (
+    <button
+      ref={ref}
+      onClick={() => {
+        onSelect();
+        onDismiss();
+      }}
+      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer spatial-focus-indicator ${
+        isSelected
+          ? 'bg-red-600 text-white'
+          : isSpatialFocused
+          ? 'bg-white/20 text-white'
+          : 'text-zinc-300 hover:bg-white/10 hover:text-white'
+      } ${isSpatialFocused ? 'spatial-focus-pill ring-2 ring-white/90' : ''}`}
+    >
+      <span className="capitalize">
+        {label}
+        {sublabel ? ` (${sublabel})` : ''}
+      </span>
+      {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+    </button>
+  );
+}
+
+interface PlayerSpeedItemProps {
+  speed: number;
+  index: number;
+  isSelected: boolean;
+  onSelect: (spd: number) => void;
+  onDismiss: () => void;
+}
+
+function PlayerSpeedItem({
+  speed,
+  index,
+  isSelected,
+  onSelect,
+  onDismiss,
+}: PlayerSpeedItemProps) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: `player-speed-item-${speed}`,
+    zone: 'player-menu',
+    section: 'player-menu-speeds',
+    index,
+    priority: isSelected ? 10 : 0,
+    onEnter: () => {
+      onSelect(speed);
+      onDismiss();
+    },
+  });
+
+  return (
+    <button
+      ref={ref}
+      onClick={() => {
+        onSelect(speed);
+        onDismiss();
+      }}
+      className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer spatial-focus-indicator ${
+        isSelected
+          ? 'bg-red-600 text-white'
+          : isSpatialFocused
+          ? 'bg-white/20 text-white'
+          : 'bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white'
+      } ${isSpatialFocused ? 'spatial-focus-pill ring-2 ring-white/90' : ''}`}
+    >
+      {speed}x
+    </button>
+  );
+}
 
 interface HlsPlayerProps {
   media: PlayingMediaInfo;
@@ -39,7 +139,15 @@ export function HlsPlayer({
   onProgressUpdate,
   onNextEpisode,
 }: HlsPlayerProps) {
+  const { pushZone, popZone, setFocused } = useSpatialNavigation();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    pushZone('player', 'player-play-pause-btn');
+    return () => {
+      popZone('player');
+    };
+  }, [pushZone, popZone]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -52,8 +160,6 @@ export function HlsPlayer({
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [buffered, setBuffered] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(1);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
@@ -185,7 +291,7 @@ export function HlsPlayer({
               hlsRef.current.trigger(Hls.Events.BUFFER_FLUSHING, {
                 startOffset: 0,
                 endOffset: v.currentTime - 10,
-                type: undefined,
+                type: null,
               });
             }
           }
@@ -343,9 +449,54 @@ export function HlsPlayer({
   }, [media.fileId, onProgressUpdate]);
 
   const handleClose = useCallback(() => {
+    popZone('player');
     flushProgress();
     onClose();
-  }, [flushProgress, onClose]);
+  }, [popZone, flushProgress, onClose]);
+
+  const handleDismissSubtitleMenu = useCallback(() => {
+    setShowSubtitleMenu(false);
+    popZone('player-menu');
+    setFocused('player-subtitles-btn', true);
+  }, [popZone, setFocused]);
+
+  const handleDismissSettingsMenu = useCallback(() => {
+    setShowSettingsMenu(false);
+    popZone('player-menu');
+    setFocused('player-settings-btn', true);
+  }, [popZone, setFocused]);
+
+  const openSubtitleMenu = useCallback(() => {
+    setShowSubtitleMenu(true);
+    setShowSettingsMenu(false);
+    pushZone('player-menu', activeSubtitleLang ? `player-sub-item-${activeSubtitleLang}` : 'player-sub-item-off');
+  }, [activeSubtitleLang, pushZone]);
+
+  const openSettingsMenu = useCallback(() => {
+    setShowSettingsMenu(true);
+    setShowSubtitleMenu(false);
+    pushZone('player-menu', `player-speed-item-${playbackRate}`);
+  }, [playbackRate, pushZone]);
+
+  // Deterministic stack-based zone back handlers
+  useZoneBack('player', () => {
+    if (showControls) {
+      dismissControls();
+    } else {
+      handleClose();
+    }
+  });
+  useZoneBack(
+    'player-menu',
+    () => {
+      if (showSubtitleMenu) {
+        handleDismissSubtitleMenu();
+      } else if (showSettingsMenu) {
+        handleDismissSettingsMenu();
+      }
+    },
+    showSubtitleMenu || showSettingsMenu
+  );
 
   // Periodic progress sync to backend every 5 seconds & on unmount
   useEffect(() => {
@@ -381,7 +532,7 @@ export function HlsPlayer({
     if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
-      }, 3000);
+      }, 3500);
     }
   }, [isPlaying, showSubtitleMenu, showSettingsMenu]);
 
@@ -464,25 +615,7 @@ export function HlsPlayer({
     triggerActivity();
   };
 
-  const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setIsMuted(video.muted);
-    triggerActivity();
-  };
-
-  const changeVolume = (val: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.volume = val;
-    video.muted = val === 0;
-    setVolume(val);
-    setIsMuted(val === 0);
-    triggerActivity();
-  };
-
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
@@ -490,7 +623,7 @@ export function HlsPlayer({
       document.exitFullscreen().catch(() => {});
       setIsFullscreen(false);
     }
-  };
+  }, []);
 
   const handleCast = async () => {
     const video = videoRef.current as any;
@@ -532,98 +665,199 @@ export function HlsPlayer({
     onSeek: (offset) => seek(offset),
   });
 
-  // 10. Global Keyboard Shortcuts
-  const keyboardActionsRef = useRef({
-    togglePlay,
-    seek,
-    changeVolume,
-    toggleMute,
-    toggleFullscreen,
-    volume,
-    activeSubtitleLang,
-    streamInfo,
-    showSubtitleMenu,
-    showSettingsMenu,
-    handleClose,
+  // Spatial Focus Nodes for Top Bar Elements
+  const { ref: backBtnRef, isSpatialFocused: isBackBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-back-btn',
+    zone: 'player',
+    section: 'player-top',
+    index: 0,
+    onEnter: handleClose,
   });
 
-  useEffect(() => {
-    keyboardActionsRef.current = {
-      togglePlay,
-      seek,
-      changeVolume,
-      toggleMute,
-      toggleFullscreen,
-      volume,
-      activeSubtitleLang,
-      streamInfo,
-      showSubtitleMenu,
-      showSettingsMenu,
-      handleClose,
-    };
+  const { ref: castBtnRef, isSpatialFocused: isCastBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-cast-btn',
+    zone: 'player',
+    section: 'player-top',
+    index: 1,
+    onEnter: handleCast,
   });
 
+  const { ref: subBtnRef, isSpatialFocused: isSubBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-subtitles-btn',
+    zone: 'player',
+    section: 'player-top',
+    index: 2,
+    onEnter: () => {
+      if (showSubtitleMenu) {
+        handleDismissSubtitleMenu();
+      } else {
+        openSubtitleMenu();
+      }
+    },
+  });
+
+  const { ref: settingsBtnRef, isSpatialFocused: isSettingsBtnFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-settings-btn',
+    zone: 'player',
+    section: 'player-top',
+    index: 3,
+    onEnter: () => {
+      if (showSettingsMenu) {
+        handleDismissSettingsMenu();
+      } else {
+        openSettingsMenu();
+      }
+    },
+  });
+
+  // Spatial Focus Node for Middle Action Elements (Play/Pause only; Left/Right triggers seek)
+  const { ref: playPauseRef, isSpatialFocused: isPlayPauseFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-play-pause-btn',
+    zone: 'player',
+    section: 'player-middle',
+    index: 0,
+    priority: 100,
+    onEnter: togglePlay,
+    onLeft: () => seek(-10),
+    onRight: () => seek(10),
+  });
+
+  // Spatial Focus Node for Timeline Progress Slider
+  const { ref: timelineRef, isSpatialFocused: isTimelineFocused } = useFocusable<HTMLInputElement>({
+    id: 'player-timeline-slider',
+    zone: 'player',
+    section: 'player-timeline',
+    index: 0,
+    onEnter: togglePlay,
+    onLeft: () => seek(-10),
+    onRight: () => seek(10),
+  });
+
+  // Spatial Focus Nodes for Bottom Bar Elements
+  const { ref: nextEpRef, isSpatialFocused: isNextEpFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-next-ep-btn',
+    zone: 'player',
+    section: 'player-bottom',
+    index: 0,
+    disabled: !onNextEpisode,
+    onEnter: () => {
+      if (onNextEpisode) {
+        isTransitioningRef.current = true;
+        flushProgress();
+        onNextEpisode();
+      }
+    },
+  });
+
+  const { ref: fullscreenRef, isSpatialFocused: isFullscreenFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-fullscreen-btn',
+    zone: 'player',
+    section: 'player-bottom',
+    index: onNextEpisode ? 1 : 0,
+    onEnter: toggleFullscreen,
+  });
+
+  // Global Keydown Handler for Idle Wake-Up & Desktop Hotkeys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const actions = keyboardActionsRef.current;
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.getAttribute('contenteditable') === 'true'
+      ) {
+        return;
+      }
 
-      switch (e.code) {
-        case 'Space':
-        case 'KeyK':
+      const isSpace = e.key === ' ' || e.code === 'Space' || e.keyCode === 32 || e.code === 'KeyK';
+      const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37 || e.code === 'KeyJ';
+      const isRight = e.key === 'ArrowRight' || e.keyCode === 39 || e.code === 'KeyL';
+      const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
+      const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
+      const isEnter = e.key === 'Enter' || e.keyCode === 13;
+      const isBack = e.key === 'Escape' || e.keyCode === 10009 || e.keyCode === 461;
+
+      // Spacebar: Universal explicit Play / Pause toggle across all states
+      if (isSpace) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePlay();
+        setShowControls(true);
+        triggerActivity();
+        return;
+      }
+
+      // Desktop hotkeys: Fullscreen (F) and Subtitles toggle (C)
+      if (e.code === 'KeyF') {
+        e.preventDefault();
+        toggleFullscreen();
+        triggerActivity();
+        return;
+      }
+
+      if (e.code === 'KeyC') {
+        e.preventDefault();
+        if (activeSubtitleLang) {
+          setActiveSubtitleLang(null);
+        } else if (streamInfo?.subtitles && streamInfo.subtitles.length > 0) {
+          setActiveSubtitleLang(streamInfo.subtitles[0].lang);
+        }
+        triggerActivity();
+        return;
+      }
+
+      // When controls are hidden, wake up overlay on navigation / action keys
+      if (!showControls) {
+        if (isBack) {
+          // Allow zone back handler to trigger dismissal/close
+          return;
+        }
+
+        if (isLeft) {
           e.preventDefault();
-          actions.togglePlay();
-          break;
-        case 'ArrowLeft':
-        case 'KeyJ':
+          e.stopPropagation();
+          seek(-10);
+          setShowControls(true);
+          triggerActivity();
+          setFocused('player-play-pause-btn', true);
+          return;
+        }
+
+        if (isRight) {
           e.preventDefault();
-          actions.seek(-10);
-          break;
-        case 'ArrowRight':
-        case 'KeyL':
+          e.stopPropagation();
+          seek(10);
+          setShowControls(true);
+          triggerActivity();
+          setFocused('player-play-pause-btn', true);
+          return;
+        }
+
+        if (isUp || isDown || isEnter) {
           e.preventDefault();
-          actions.seek(10);
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          actions.changeVolume(Math.min(1, actions.volume + 0.1));
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          actions.changeVolume(Math.max(0, actions.volume - 0.1));
-          break;
-        case 'KeyM':
-          e.preventDefault();
-          actions.toggleMute();
-          break;
-        case 'KeyF':
-          e.preventDefault();
-          actions.toggleFullscreen();
-          break;
-        case 'KeyC':
-          e.preventDefault();
-          // Toggle subtitle off or first available
-          if (actions.activeSubtitleLang) {
-            setActiveSubtitleLang(null);
-          } else if (actions.streamInfo?.subtitles && actions.streamInfo.subtitles.length > 0) {
-            setActiveSubtitleLang(actions.streamInfo.subtitles[0].lang);
-          }
-          break;
-        case 'Escape':
-          e.preventDefault();
-          if (actions.showSubtitleMenu || actions.showSettingsMenu) {
-            setShowSubtitleMenu(false);
-            setShowSettingsMenu(false);
-          } else {
-            actions.handleClose();
-          }
-          break;
+          e.stopPropagation();
+          setShowControls(true);
+          triggerActivity();
+          setFocused('player-play-pause-btn', true);
+          return;
+        }
+      } else {
+        triggerActivity();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [
+    showControls,
+    togglePlay,
+    seek,
+    setFocused,
+    triggerActivity,
+    toggleFullscreen,
+    activeSubtitleLang,
+    streamInfo,
+  ]);
 
   const isTouchInteractionRef = useRef<boolean>(false);
   const isBackdropClickPendingRef = useRef<boolean>(false);
@@ -883,8 +1117,11 @@ export function HlsPlayer({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
+              ref={backBtnRef}
               onClick={handleClose}
-              className="p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
+              className={`p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                isBackBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+              }`}
               title="Close Player (Esc)"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -898,8 +1135,11 @@ export function HlsPlayer({
           <div className="flex items-center gap-2">
             {/* Cast to Display Button */}
             <button
+              ref={castBtnRef}
               onClick={handleCast}
-              className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
+              className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                isCastBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+              }`}
               title="Cast to Display"
             >
               <Cast className="w-5 h-5" />
@@ -908,11 +1148,17 @@ export function HlsPlayer({
             {/* Subtitles Menu Trigger */}
             <div className="relative">
               <button
+                ref={subBtnRef}
                 onClick={() => {
-                  setShowSubtitleMenu(!showSubtitleMenu);
-                  setShowSettingsMenu(false);
+                  if (showSubtitleMenu) {
+                    handleDismissSubtitleMenu();
+                  } else {
+                    openSubtitleMenu();
+                  }
                 }}
-                className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
+                className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                  isSubBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+                }`}
                 title="Subtitles & Audio"
               >
                 <Subtitles className="w-5 h-5" />
@@ -925,36 +1171,30 @@ export function HlsPlayer({
                     <div>
                       <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Subtitles</div>
                       <div className="space-y-0.5">
-                        <button
-                          onClick={() => {
+                        <PlayerMenuItem
+                          id="player-sub-item-off"
+                          index={0}
+                          isSelected={!activeSubtitleLang}
+                          label="Off"
+                          onSelect={() => {
                             setActiveSubtitleLang(null);
                             ApiClient.saveSubtitlePreference(media.mediaId, 'none');
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                            !activeSubtitleLang
-                              ? 'bg-red-600 text-white shadow-sm'
-                              : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <span>Off</span>
-                          {!activeSubtitleLang && <Check className="w-3.5 h-3.5 text-white" />}
-                        </button>
-                        {streamInfo?.subtitles?.map((sub) => (
-                          <button
+                          onDismiss={handleDismissSubtitleMenu}
+                        />
+                        {streamInfo?.subtitles?.map((sub, idx) => (
+                          <PlayerMenuItem
                             key={sub.lang}
-                            onClick={() => {
+                            id={`player-sub-item-${sub.lang}`}
+                            index={1 + idx}
+                            isSelected={activeSubtitleLang === sub.lang}
+                            label={sub.lang}
+                            onSelect={() => {
                               setActiveSubtitleLang(sub.lang);
                               ApiClient.saveSubtitlePreference(media.mediaId, sub.lang);
                             }}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                              activeSubtitleLang === sub.lang
-                                ? 'bg-red-600 text-white shadow-sm'
-                                : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                            }`}
-                          >
-                            <span className="capitalize">{sub.lang}</span>
-                            {activeSubtitleLang === sub.lang && <Check className="w-3.5 h-3.5 text-white" />}
-                          </button>
+                            onDismiss={handleDismissSubtitleMenu}
+                          />
                         ))}
                       </div>
                     </div>
@@ -964,22 +1204,20 @@ export function HlsPlayer({
                       <div className="border-t border-white/10 pt-2.5">
                         <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Audio Track</div>
                         <div className="space-y-0.5 max-h-36 overflow-y-auto overscroll-contain">
-                          {audioTracks.map((trk) => (
-                            <button
+                          {audioTracks.map((trk, trkIdx) => (
+                            <PlayerMenuItem
                               key={trk.id}
-                              onClick={() => {
+                              id={`player-audio-item-${trk.id}`}
+                              index={1 + (streamInfo?.subtitles?.length || 0) + trkIdx}
+                              isSelected={activeAudioTrack === trk.id}
+                              label={trk.name}
+                              sublabel={trk.lang}
+                              onSelect={() => {
                                 setActiveAudioTrack(trk.id);
                                 if (hlsRef.current) hlsRef.current.audioTrack = trk.id;
                               }}
-                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                activeAudioTrack === trk.id
-                                  ? 'bg-red-600 text-white shadow-sm'
-                                  : 'text-zinc-300 hover:bg-white/10 hover:text-white'
-                              }`}
-                            >
-                              <span>{trk.name} ({trk.lang})</span>
-                              {activeAudioTrack === trk.id && <Check className="w-3.5 h-3.5 text-white" />}
-                            </button>
+                              onDismiss={handleDismissSubtitleMenu}
+                            />
                           ))}
                         </div>
                       </div>
@@ -992,11 +1230,17 @@ export function HlsPlayer({
             {/* Playback Settings Menu */}
             <div className="relative">
               <button
+                ref={settingsBtnRef}
                 onClick={() => {
-                  setShowSettingsMenu(!showSettingsMenu);
-                  setShowSubtitleMenu(false);
+                  if (showSettingsMenu) {
+                    handleDismissSettingsMenu();
+                  } else {
+                    openSettingsMenu();
+                  }
                 }}
-                className="p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer"
+                className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                  isSettingsBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+                }`}
                 title="Playback Settings"
               >
                 <Settings className="w-5 h-5" />
@@ -1006,21 +1250,18 @@ export function HlsPlayer({
                 <div className="absolute right-0 top-12 w-56 glass-panel bg-zinc-900/95 rounded-2xl p-3 shadow-2xl z-40 border border-white/10">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Speed</div>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((spd) => (
-                      <button
+                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((spd, idx) => (
+                      <PlayerSpeedItem
                         key={spd}
-                        onClick={() => {
-                          if (videoRef.current) videoRef.current.playbackRate = spd;
-                          setPlaybackRate(spd);
+                        speed={spd}
+                        index={idx}
+                        isSelected={playbackRate === spd}
+                        onSelect={(newSpd) => {
+                          if (videoRef.current) videoRef.current.playbackRate = newSpd;
+                          setPlaybackRate(newSpd);
                         }}
-                        className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          playbackRate === spd
-                            ? 'bg-red-600 text-white shadow-sm'
-                            : 'bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white'
-                        }`}
-                      >
-                        {spd}x
-                      </button>
+                        onDismiss={handleDismissSettingsMenu}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1037,6 +1278,7 @@ export function HlsPlayer({
         >
           <button
             onClick={() => seek(-10)}
+            tabIndex={-1}
             className="p-3.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer active:scale-95"
             title="Skip back 10s (← / J)"
           >
@@ -1044,8 +1286,11 @@ export function HlsPlayer({
           </button>
 
           <button
+            ref={playPauseRef}
             onClick={togglePlay}
-            className="p-5 rounded-full bg-red-600 hover:bg-red-500 text-white transition transform hover:scale-105 active:scale-95 cursor-pointer"
+            className={`p-5 rounded-full bg-red-600 hover:bg-red-500 text-white transition transform hover:scale-105 active:scale-95 cursor-pointer spatial-focus-indicator ${
+              isPlayPauseFocused ? 'spatial-focus-pill ring-2 ring-white/90' : ''
+            }`}
             title="Play / Pause (Space / K)"
           >
             {isPlaying ? <Pause className="w-9 h-9 fill-current" /> : <Play className="w-9 h-9 fill-current" />}
@@ -1053,6 +1298,7 @@ export function HlsPlayer({
 
           <button
             onClick={() => seek(10)}
+            tabIndex={-1}
             className="p-3.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer active:scale-95"
             title="Skip forward 10s (→ / L)"
           >
@@ -1065,13 +1311,16 @@ export function HlsPlayer({
           {/* Seek Progress Bar */}
           <div className="group relative w-full h-6 flex items-center cursor-pointer touch-none">
             <input
+              ref={timelineRef}
               type="range"
               min="0"
               max={duration || 100}
               step="any"
               value={currentTime}
               onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className="w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none"
+              className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none spatial-focus-indicator ${
+                isTimelineFocused ? 'spatial-focus-active ring-2 ring-white/90' : ''
+              }`}
               style={{
                 background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
                   (currentTime / (duration || 1)) * 100
@@ -1081,35 +1330,19 @@ export function HlsPlayer({
           </div>
 
           <div className="flex items-center justify-between">
-            {/* Left Controls: Volume & Timestamp */}
+            {/* Left Controls: Next Episode & Timestamp */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 group">
-                <button
-                  onClick={toggleMute}
-                  className="p-1.5 text-zinc-400 hover:text-white transition cursor-pointer"
-                  title="Mute (M)"
-                >
-                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                  className="w-16 sm:w-24 h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none"
-                />
-              </div>
-
               {onNextEpisode && (
                 <button
+                  ref={nextEpRef}
                   onClick={() => {
                     isTransitioningRef.current = true;
                     flushProgress();
                     onNextEpisode();
                   }}
-                  className="p-1.5 text-zinc-400 hover:text-white transition cursor-pointer"
+                  className={`p-1.5 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
+                    isNextEpFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+                  }`}
                   title="Next Episode"
                 >
                   <SkipForward className="w-5 h-5" />
@@ -1124,8 +1357,11 @@ export function HlsPlayer({
             {/* Right Controls: Fullscreen */}
             <div className="flex items-center gap-2">
               <button
+                ref={fullscreenRef}
                 onClick={toggleFullscreen}
-                className="p-2 text-zinc-400 hover:text-white transition cursor-pointer"
+                className={`p-2 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
+                  isFullscreenFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+                }`}
                 title="Fullscreen (F)"
               >
                 {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}

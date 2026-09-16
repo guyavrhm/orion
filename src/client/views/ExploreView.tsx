@@ -86,7 +86,7 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
         {/* Scroll Container */}
         <div
           ref={rowRef}
-          className="flex gap-4 sm:gap-5 overflow-x-auto no-scrollbar pb-3 pt-1 scroll-smooth"
+          className="flex gap-4 sm:gap-5 overflow-x-auto no-scrollbar -mt-2 pt-3 pb-3 px-1.5 -mx-1.5 scroll-smooth"
         >
           {children}
         </div>
@@ -177,7 +177,7 @@ export function ExploreView({
           <MediaCarouselRow
             title="Continue Watching"
           >
-          {continueWatching.map((item) => {
+          {continueWatching.map((item, idx) => {
             const isMovie = item.type === 'movie';
 
             if (isMovie) {
@@ -190,6 +190,10 @@ export function ExploreView({
               return (
                 <ContinueWatchingCard
                   key={`continue-${item.id}`}
+                  focusId={`continue-${item.id}`}
+                  zone="explore"
+                  section="continue-watching"
+                  index={idx}
                   className="w-56 sm:w-72"
                   title={item.title}
                   subtitle={subtitle}
@@ -244,6 +248,10 @@ export function ExploreView({
             return (
               <ContinueWatchingCard
                 key={`continue-${item.id}`}
+                focusId={`continue-${item.id}`}
+                zone="explore"
+                section="continue-watching"
+                index={idx}
                 className="w-56 sm:w-72"
                 title={item.title}
                 subtitle={subtitle}
@@ -266,13 +274,17 @@ export function ExploreView({
         <MediaCarouselRow
           title="Popular Movies"
         >
-          {movies.map((m) => {
+          {movies.map((m, idx) => {
             const isReady = isMediaReady(m);
             const percent = calculateProgressPercent(progressMap[m.id]);
 
             return (
               <MediaCard
                 key={m.id}
+                focusId={`movie-${m.id}`}
+                zone="explore"
+                section="popular-movies"
+                index={idx}
                 className="w-36 sm:w-44"
                 title={m.title}
                 poster={m.poster}
@@ -292,12 +304,16 @@ export function ExploreView({
         <MediaCarouselRow
           title="Trending TV Shows"
         >
-          {shows.map((s) => {
+          {shows.map((s, idx) => {
             const isReady = isMediaReady(s);
 
             return (
               <MediaCard
                 key={s.id}
+                focusId={`show-${s.id}`}
+                zone="explore"
+                section="trending-shows"
+                index={idx}
                 className="w-36 sm:w-44"
                 title={s.title}
                 poster={s.poster}
