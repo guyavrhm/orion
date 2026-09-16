@@ -100,9 +100,11 @@ export function EpisodeCard({
           )}
         </div>
 
-        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-          {episode.description || 'No episode synopsis provided.'}
-        </p>
+        {episode.description && (
+          <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+            {episode.description}
+          </p>
+        )}
       </div>
     </motion.div>
   );
