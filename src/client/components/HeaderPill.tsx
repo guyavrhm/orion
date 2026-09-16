@@ -262,211 +262,220 @@ export function HeaderPill({
               : 'border-white/10 bg-zinc-900/80'
           }`}
         >
-          {toast ? (
-            /* Toast Alert Mode: Dynamic Island Morph */
-            <motion.div
-              key="toast-hud"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="flex-1 flex items-center justify-between gap-3 min-w-0 h-full"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <span className="text-xs font-medium text-zinc-200 truncate">{toast}</span>
-              </div>
-              <button
-                type="button"
-                onClick={onClearToast}
-                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex-shrink-0 cursor-pointer"
-                title="Dismiss"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          ) : (
-            <>
-              {/* Brand Mode: Left Brand + Right Action with Smooth Morph Animation */}
+          <AnimatePresence mode="wait" initial={false}>
+            {toast ? (
+              /* Toast Alert Mode: Dynamic Island Morph */
               <motion.div
-                initial={false}
-                animate={{
-                  opacity: isSearching ? 0 : 1,
-                  scale: isSearching ? 0.96 : 1,
-                }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`flex-1 flex items-center justify-between min-w-0 h-full ${
-                  isSearching ? 'pointer-events-none' : 'pointer-events-auto'
-                }`}
+                key="toast-hud"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="flex-1 flex items-center justify-between gap-3 min-w-0 h-full"
               >
-                {/* Left: Dynamic Back button + Divider + (Orion Brand OR Show Logo/Title) */}
-                <div className="flex items-center min-w-0 flex-1 mr-2">
-                  <AnimatePresence initial={false}>
-                    {onBack && (
-                      <motion.div
-                        key="pill-back-container"
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{
-                          opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1,
-                          width: dragProgress > 0 ? Math.max(0, (1 - dragProgress) * 44) : 44,
-                        }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                        className="flex items-center overflow-hidden flex-shrink-0"
-                      >
-                        <div className="flex items-center gap-2 pr-2.5 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onBack();
-                            }}
-                            className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
-                            title="Back (Esc)"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </button>
-                          <div className="w-px h-4 bg-zinc-800 flex-shrink-0" />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <span className="text-xs font-medium text-zinc-200 truncate">{toast}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClearToast}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex-shrink-0 cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="header-default"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="flex-1 flex items-center justify-between min-w-0 h-full"
+              >
+                {/* Brand Mode: Left Brand + Right Action with Smooth Morph Animation */}
+                <motion.div
+                  initial={false}
+                  animate={{
+                    opacity: isSearching ? 0 : 1,
+                    scale: isSearching ? 0.96 : 1,
+                  }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={`flex-1 flex items-center justify-between min-w-0 h-full ${
+                    isSearching ? 'pointer-events-none' : 'pointer-events-auto'
+                  }`}
+                >
+                  {/* Left: Dynamic Back button + Divider + (Orion Brand OR Show Logo/Title) */}
+                  <div className="flex items-center min-w-0 flex-1 mr-2">
+                    <AnimatePresence initial={false}>
+                      {onBack && (
+                        <motion.div
+                          key="pill-back-container"
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{
+                            opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1,
+                            width: dragProgress > 0 ? Math.max(0, (1 - dragProgress) * 44) : 44,
+                          }}
+                          exit={{ opacity: 0, width: 0 }}
+                          transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                          className="flex items-center overflow-hidden flex-shrink-0"
+                        >
+                          <div className="flex items-center gap-2 pr-2.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onBack();
+                              }}
+                              className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                              title="Back (Esc)"
+                            >
+                              <ArrowLeft className="w-4 h-4" />
+                            </button>
+                            <div className="w-px h-4 bg-zinc-800 flex-shrink-0" />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
+                    <AnimatePresence mode="wait" initial={false}>
+                      {showContext?.isScrolledPast && showContext.seasons.length > 1 ? (
+                        <motion.div
+                          key="show-brand-content"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
+                          className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none min-w-0"
+                        >
+                          {showContext.logo && !logoError ? (
+                            <img
+                              src={showContext.logo}
+                              alt={showContext.title}
+                              onError={() => setLogoError(true)}
+                              className="max-h-5 max-w-[130px] sm:max-w-[200px] object-contain"
+                            />
+                          ) : (
+                            <span className="text-xs font-black tracking-wide text-white truncate">
+                              {showContext.title}
+                            </span>
+                          )}
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="orion-brand-content"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                          className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none flex-shrink-0"
+                        >
+                          <div className="w-6 h-6 flex items-center justify-center">
+                            <img
+                              src="/assets/images/orion-nobackground.png"
+                              alt="Orion"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                          <span className="text-xs font-black tracking-wider text-white">
+                            ORION
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Right: Search Icon Button OR Morphed Season Picker Dropdown Trigger */}
                   <AnimatePresence mode="wait" initial={false}>
                     {showContext?.isScrolledPast && showContext.seasons.length > 1 ? (
                       <motion.div
-                        key="show-brand-content"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
+                        key="pill-season-trigger"
+                        initial={{ opacity: 0, y: -6, scale: 0.9 }}
+                        animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.9 }}
                         transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
-                        className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none min-w-0"
+                        className="relative flex-shrink-0"
                       >
-                        {showContext.logo && !logoError ? (
-                          <img
-                            src={showContext.logo}
-                            alt={showContext.title}
-                            onError={() => setLogoError(true)}
-                            className="max-h-5 max-w-[130px] sm:max-w-[200px] object-contain"
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowNavSeasonDropdown((prev) => !prev);
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            showNavSeasonDropdown
+                              ? 'bg-white/10 text-white'
+                              : 'hover:bg-white/10 text-zinc-300 hover:text-white'
+                          }`}
+                          title="Select Season"
+                        >
+                          <span>Season {showContext.activeSeason}</span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                              showNavSeasonDropdown ? 'rotate-180 text-white' : 'group-hover:text-white'
+                            }`}
                           />
-                        ) : (
-                          <span className="text-xs font-black tracking-wide text-white truncate">
-                            {showContext.title}
-                          </span>
-                        )}
+                        </button>
                       </motion.div>
                     ) : (
-                      <motion.div
-                        key="orion-brand-content"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
+                      <motion.button
+                        key="pill-search-trigger"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="flex items-center gap-2 pl-0.5 pr-1 py-1 select-none flex-shrink-0"
+                        type="button"
+                        onClick={openSearch}
+                        className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
+                        title="Search (⌘K)"
                       >
-                        <div className="w-6 h-6 flex items-center justify-center">
-                          <img
-                            src="/assets/images/orion-nobackground.png"
-                            alt="Orion"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <span className="text-xs font-black tracking-wider text-white">
-                          ORION
-                        </span>
-                      </motion.div>
+                        <Search className="w-4 h-4" />
+                      </motion.button>
                     )}
                   </AnimatePresence>
-                </div>
+                </motion.div>
 
-                {/* Right: Search Icon Button OR Morphed Season Picker Dropdown Trigger */}
-                <AnimatePresence mode="wait" initial={false}>
-                  {showContext?.isScrolledPast && showContext.seasons.length > 1 ? (
-                    <motion.div
-                      key="pill-season-trigger"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: dragProgress > 0 ? Math.max(0, 1 - dragProgress) : 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={dragProgress > 0 ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
-                      className="relative flex-shrink-0"
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowNavSeasonDropdown((prev) => !prev);
-                        }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          showNavSeasonDropdown
-                            ? 'bg-white/10 text-white'
-                            : 'hover:bg-white/10 text-zinc-300 hover:text-white'
-                        }`}
-                        title="Select Season"
-                      >
-                        <span>Season {showContext.activeSeason}</span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
-                            showNavSeasonDropdown ? 'rotate-180 text-white' : 'group-hover:text-white'
-                          }`}
-                        />
-                      </button>
-                    </motion.div>
-                  ) : (
-                    <motion.button
-                      key="pill-search-trigger"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      type="button"
-                      onClick={openSearch}
-                      className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer flex items-center justify-center"
-                      title="Search (⌘K)"
-                    >
-                      <Search className="w-4 h-4" />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              {/* Active Search Mode: Persistent DOM Input with Fluid Motion Morph */}
-              <motion.div
-                initial={false}
-                animate={{
-                  opacity: isSearching ? 1 : 0,
-                  scale: isSearching ? 1 : 0.96,
-                }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`absolute inset-0 px-4 flex items-center gap-3 min-w-0 h-full ${
-                  isSearching ? 'pointer-events-auto z-10' : 'pointer-events-none z-0'
-                }`}
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 text-zinc-400 animate-spin flex-shrink-0" />
-                ) : (
-                  <Search className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                )}
-
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search movies, TV shows, actors..."
-                  className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm font-medium focus:outline-none min-w-0"
-                />
-
-                <button
-                  type="button"
-                  onClick={closeSearch}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
-                  title="Close (Esc)"
+                {/* Active Search Mode: Persistent DOM Input with Fluid Motion Morph */}
+                <motion.div
+                  initial={false}
+                  animate={{
+                    opacity: isSearching ? 1 : 0,
+                    scale: isSearching ? 1 : 0.96,
+                  }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={`absolute inset-0 px-4 flex items-center gap-3 min-w-0 h-full ${
+                    isSearching ? 'pointer-events-auto z-10' : 'pointer-events-none z-0'
+                  }`}
                 >
-                  <X className="w-4 h-4" />
-                </button>
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 text-zinc-400 animate-spin flex-shrink-0" />
+                  ) : (
+                    <Search className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                  )}
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search movies, TV shows, actors..."
+                    className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm font-medium focus:outline-none min-w-0"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={closeSearch}
+                    className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition flex-shrink-0 cursor-pointer"
+                    title="Close (Esc)"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </motion.div>
               </motion.div>
-            </>
-          )}
+            )}
+          </AnimatePresence>
         </header>
 
         {/* Season Picker Dropdown anchored to Nav Pill */}
