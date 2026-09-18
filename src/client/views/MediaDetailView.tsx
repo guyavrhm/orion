@@ -385,6 +385,29 @@ export function MediaDetailView({
     setUserSelectedSeason(season);
   }, []);
 
+  const handleSelectSeasonFromNav = useCallback((season: number) => {
+    setUserSelectedSeason(season);
+
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      const headerEl = headerRowRef.current;
+      if (!container || !headerEl) return;
+
+      const pillHeader = document.querySelector('header');
+      const navBottom = pillHeader ? Math.round(pillHeader.getBoundingClientRect().bottom) : 64;
+
+      const containerRect = container.getBoundingClientRect();
+      const headerRect = headerEl.getBoundingClientRect();
+
+      const targetScroll = container.scrollTop + (headerRect.top - containerRect.top) - navBottom - 12;
+
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth',
+      });
+    });
+  }, []);
+
   // Sync show navigation context to top HeaderPill
   useEffect(() => {
     if (isMovie || seasons.length <= 1) {
@@ -397,10 +420,10 @@ export function MediaDetailView({
       logo: current.logo,
       seasons,
       activeSeason,
-      onSelectSeason: handleSelectSeason,
+      onSelectSeason: handleSelectSeasonFromNav,
       isScrolledPast: isPastSeasonPicker,
     });
-  }, [isMovie, seasons, activeSeason, isPastSeasonPicker, current.title, current.logo, handleSelectSeason, onShowNavContextChange]);
+  }, [isMovie, seasons, activeSeason, isPastSeasonPicker, current.title, current.logo, handleSelectSeasonFromNav, onShowNavContextChange]);
 
   // Clear show nav context on unmount
   useEffect(() => {
