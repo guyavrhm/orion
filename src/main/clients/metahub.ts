@@ -36,6 +36,9 @@ export class MetahubClient {
       const data = (await resp.json()) as Record<string, unknown>[];
       if (!Array.isArray(data)) return [];
       return data.map((item: Record<string, any>) => {
+        item.poster = item.poster || `https://images.metahub.space/poster/medium/${item.id}/img`;
+        item.background = item.background || `https://images.metahub.space/background/medium/${item.id}/img`;
+        item.logo = item.logo || `https://images.metahub.space/logo/medium/${item.id}/img`;
         const type: MediaType = item.type === 'series' || item.type === 'show' ? 'show' : 'movie';
         return type === 'movie'
           ? normalizeRawMovieMetadata(item)

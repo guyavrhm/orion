@@ -108,10 +108,16 @@ describe('MetahubClient', () => {
       expect(showItem).toBeDefined();
       expect(showItem?.title).toBe('Flash Gordon Conquers the Universe');
       expect(showItem?.year).toBe('1940');
+      expect(showItem?.poster).toBe('https://images.metahub.space/poster/medium/tt0032475/img');
+      expect(showItem?.background).toBe('https://images.metahub.space/background/medium/tt0032475/img');
+      expect(showItem?.logo).toBe('https://images.metahub.space/logo/medium/tt0032475/img');
 
       expect(movieItem).toBeDefined();
       expect(movieItem?.title).toBe('Plan 9 from Outer Space');
       expect(movieItem?.year).toBe('1957');
+      expect(movieItem?.poster).toBe('https://images.metahub.space/poster/medium/tt0052077/img');
+      expect(movieItem?.background).toBe('https://images.metahub.space/background/medium/tt0052077/img');
+      expect(movieItem?.logo).toBe('https://images.metahub.space/logo/medium/tt0052077/img');
     });
 
     it('should properly encode special characters and query strings', async () => {
