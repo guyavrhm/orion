@@ -48,7 +48,7 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
   };
 
   return (
-    <section className="space-y-4 group/carousel relative">
+    <section className="space-y-4 relative hover:[&_.carousel-nav]:opacity-100">
       <div className="flex items-center justify-between">
         <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
           {icon}
@@ -56,7 +56,7 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
         </h3>
 
         {/* Small header navigation chevrons on hover */}
-        <div className="hidden sm:flex items-center gap-1.5 opacity-0 group-hover/carousel:opacity-100 transition-opacity">
+        <div className="hidden sm:flex items-center gap-1.5 carousel-nav opacity-0 transition-opacity">
           <button
             type="button"
             onClick={() => handleScroll('left')}
