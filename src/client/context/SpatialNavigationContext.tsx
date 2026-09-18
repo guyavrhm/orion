@@ -479,7 +479,14 @@ export function SpatialNavigationProvider({
 
   const triggerBack = useCallback(() => {
     const stack = zoneStackRef.current;
-    if (stack.length <= 1) return;
+    if (stack.length <= 1) {
+      if (typeof window !== 'undefined' && (window as any).AndroidApp?.showExitDialog) {
+        try {
+          (window as any).AndroidApp.showExitDialog();
+        } catch {}
+      }
+      return;
+    }
 
     const currentZone = stack[stack.length - 1];
     const backHandler = zoneBackHandlersRef.current.get(currentZone);
@@ -864,6 +871,19 @@ export function SpatialNavigationProvider({
       }
     };
 
+    // Expose Android Back bridge for native Android TV wrapper
+    if (typeof window !== 'undefined') {
+      (window as any).handleAndroidBack = () => {
+        triggerBack();
+      };
+      // Register Samsung Tizen remote control return key if Tizen runtime is present
+      if ((window as any).tizen?.tvinputdevice?.registerKey) {
+        try {
+          (window as any).tizen.tvinputdevice.registerKey('Return');
+        } catch {}
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('pointerdown', handlePointerDown, { capture: true });
@@ -871,6 +891,9 @@ export function SpatialNavigationProvider({
     window.addEventListener('popstate', handlePopState);
 
     return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).handleAndroidBack;
+      }
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
