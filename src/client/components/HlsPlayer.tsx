@@ -205,6 +205,177 @@ function PlayerSubtitlesAudioMenu({
   );
 }
 
+interface PlayerBottomBarProps {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  showControls: boolean;
+  onSeek: (seconds: number) => void;
+  onSeekTo: (time: number) => void;
+  onTogglePlay: () => void;
+  onNextEpisode?: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+}
+
+const PlayerBottomBar = React.memo(function PlayerBottomBar({
+  videoRef,
+  showControls,
+  onSeek,
+  onSeekTo,
+  onTogglePlay,
+  onNextEpisode,
+  isFullscreen,
+  onToggleFullscreen,
+}: PlayerBottomBarProps) {
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const [buffered, setBuffered] = useState<number>(0);
+
+  const { ref: timelineRef, isSpatialFocused: isTimelineFocused } = useFocusable<HTMLInputElement>({
+    id: 'player-timeline-slider',
+    zone: 'player',
+    section: 'player-timeline',
+    index: 0,
+    onEnter: onTogglePlay,
+    onLeft: () => onSeek(-10),
+    onRight: () => onSeek(10),
+  });
+
+  const { ref: nextEpRef, isSpatialFocused: isNextEpFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-next-ep-btn',
+    zone: 'player',
+    section: 'player-bottom',
+    index: 0,
+    disabled: !onNextEpisode,
+    onEnter: () => onNextEpisode?.(),
+  });
+
+  const { ref: fullscreenRef, isSpatialFocused: isFullscreenFocused } = useFocusable<HTMLButtonElement>({
+    id: 'player-fullscreen-btn',
+    zone: 'player',
+    section: 'player-bottom',
+    index: onNextEpisode ? 1 : 0,
+    onEnter: onToggleFullscreen,
+  });
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const updateBufferAndTimeline = () => {
+      const cur = video.currentTime;
+      const dur = video.duration || 0;
+      setCurrentTime(cur);
+      setDuration(dur);
+
+      let activeBufferEnd = cur;
+      for (let i = 0; i < video.buffered.length; i++) {
+        const start = video.buffered.start(i);
+        const end = video.buffered.end(i);
+        if (cur >= start - 0.5 && cur <= end) {
+          activeBufferEnd = Math.max(activeBufferEnd, end);
+          break;
+        }
+      }
+      setBuffered(activeBufferEnd);
+    };
+
+    if (showControls) {
+      updateBufferAndTimeline();
+    }
+
+    const onTimeUpdate = () => {
+      if (showControls) {
+        updateBufferAndTimeline();
+      }
+    };
+
+    const onProgress = () => {
+      if (showControls) {
+        updateBufferAndTimeline();
+      }
+    };
+
+    const onMetadata = () => {
+      if (showControls) {
+        updateBufferAndTimeline();
+      }
+    };
+
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('progress', onProgress);
+    video.addEventListener('loadedmetadata', onMetadata);
+    video.addEventListener('durationchange', onMetadata);
+
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('progress', onProgress);
+      video.removeEventListener('loadedmetadata', onMetadata);
+      video.removeEventListener('durationchange', onMetadata);
+    };
+  }, [videoRef, showControls]);
+
+  return (
+    <div className="space-y-3">
+      {/* Seek Progress Bar */}
+      <div className="group relative w-full h-6 flex items-center cursor-pointer touch-none">
+        <input
+          ref={timelineRef}
+          type="range"
+          min="0"
+          max={duration || 100}
+          step="any"
+          value={currentTime}
+          onChange={(e) => onSeekTo(parseFloat(e.target.value))}
+          className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none spatial-focus-indicator ${
+            isTimelineFocused ? 'spatial-focus-active ring-2 ring-white/90' : ''
+          }`}
+          style={{
+            background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
+              (currentTime / (duration || 1)) * 100
+            }% ${(buffered / (duration || 1)) * 100}%, #27272a ${(buffered / (duration || 1)) * 100}%)`,
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        {/* Left Controls: Next Episode & Timestamp */}
+        <div className="flex items-center gap-4">
+          {onNextEpisode && (
+            <button
+              ref={nextEpRef}
+              onClick={onNextEpisode}
+              className={`p-1.5 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
+                isNextEpFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+              }`}
+              title="Next Episode"
+            >
+              <SkipForward className="w-5 h-5" />
+            </button>
+          )}
+
+          <div className="text-xs tabular-nums text-zinc-400 font-semibold tracking-wider">
+            <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
+          </div>
+        </div>
+
+        {/* Right Controls: Fullscreen */}
+        <div className="flex items-center gap-2">
+          <button
+            ref={fullscreenRef}
+            onClick={onToggleFullscreen}
+            className={`p-2 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
+              isFullscreenFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
+            }`}
+            title="Fullscreen (F)"
+          >
+            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 interface HlsPlayerProps {
   media: PlayingMediaInfo;
   initialTimestamp?: number;
@@ -238,9 +409,6 @@ export function HlsPlayer({
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
-  const [buffered, setBuffered] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
@@ -260,18 +428,6 @@ export function HlsPlayer({
   const isTransitioningRef = useRef<boolean>(false);
   const parsedCuesRef = useRef<SubtitleCue[]>([]);
   const currentSubtitleTextRef = useRef<string>('');
-  const currentTimeRef = useRef<number>(0);
-  const showControlsRef = useRef<boolean>(true);
-
-  useEffect(() => {
-    showControlsRef.current = showControls;
-    if (showControls && videoRef.current) {
-      const time = videoRef.current.currentTime;
-      setCurrentTime(time);
-      setDuration(videoRef.current.duration || 0);
-      updateBuffer(videoRef.current, time);
-    }
-  }, [showControls]);
 
   // 1. Fetch Stream Info & Subtitle Preference
   useEffect(() => {
@@ -500,46 +656,16 @@ export function HlsPlayer({
     };
   }, [activeSubtitleLang, streamInfo]);
 
-  const updateBuffer = (video: HTMLVideoElement, time: number) => {
-    let activeBufferEnd = time;
-    for (let i = 0; i < video.buffered.length; i++) {
-      const start = video.buffered.start(i);
-      const end = video.buffered.end(i);
-      if (time >= start - 0.5 && time <= end) {
-        activeBufferEnd = Math.max(activeBufferEnd, end);
-        break;
-      }
-    }
-    setBuffered(activeBufferEnd);
-  };
-
   // 5. Update active subtitle cue on timeupdate
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    const time = video.currentTime;
-    currentTimeRef.current = time;
-
     // Subtitle cue matching: only trigger React state update when text actually changes
-    const newSubText = findActiveCueText(parsedCuesRef.current, time);
+    const newSubText = findActiveCueText(parsedCuesRef.current, video.currentTime);
     if (newSubText !== currentSubtitleTextRef.current) {
       currentSubtitleTextRef.current = newSubText;
       setCurrentSubtitleText(newSubText);
-    }
-
-    // Only update timeline state when controls overlay is visible to save CPU/battery
-    if (showControlsRef.current) {
-      setCurrentTime(time);
-      setDuration(video.duration || 0);
-      updateBuffer(video, time);
-    }
-  };
-
-  const handleProgress = () => {
-    const video = videoRef.current;
-    if (video) {
-      updateBuffer(video, video.currentTime);
     }
   };
 
@@ -711,15 +837,24 @@ export function HlsPlayer({
     [triggerActivity]
   );
 
-  const seekTo = (time: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const target = Math.max(0, Math.min(video.duration || 0, time));
-    video.currentTime = target;
-    setCurrentTime(target);
-    updateBuffer(video, target);
-    triggerActivity();
-  };
+  const seekTo = useCallback(
+    (time: number) => {
+      const video = videoRef.current;
+      if (!video) return;
+      const target = Math.max(0, Math.min(video.duration || 0, time));
+      video.currentTime = target;
+      triggerActivity();
+    },
+    [triggerActivity]
+  );
+
+  const handleNextEpisode = useCallback(() => {
+    if (onNextEpisode) {
+      isTransitioningRef.current = true;
+      flushProgress();
+      onNextEpisode();
+    }
+  }, [onNextEpisode, flushProgress]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -826,41 +961,6 @@ export function HlsPlayer({
     onEnter: togglePlay,
     onLeft: () => seek(-10),
     onRight: () => seek(10),
-  });
-
-  // Spatial Focus Node for Timeline Progress Slider
-  const { ref: timelineRef, isSpatialFocused: isTimelineFocused } = useFocusable<HTMLInputElement>({
-    id: 'player-timeline-slider',
-    zone: 'player',
-    section: 'player-timeline',
-    index: 0,
-    onEnter: togglePlay,
-    onLeft: () => seek(-10),
-    onRight: () => seek(10),
-  });
-
-  // Spatial Focus Nodes for Bottom Bar Elements
-  const { ref: nextEpRef, isSpatialFocused: isNextEpFocused } = useFocusable<HTMLButtonElement>({
-    id: 'player-next-ep-btn',
-    zone: 'player',
-    section: 'player-bottom',
-    index: 0,
-    disabled: !onNextEpisode,
-    onEnter: () => {
-      if (onNextEpisode) {
-        isTransitioningRef.current = true;
-        flushProgress();
-        onNextEpisode();
-      }
-    },
-  });
-
-  const { ref: fullscreenRef, isSpatialFocused: isFullscreenFocused } = useFocusable<HTMLButtonElement>({
-    id: 'player-fullscreen-btn',
-    zone: 'player',
-    section: 'player-bottom',
-    index: onNextEpisode ? 1 : 0,
-    onEnter: toggleFullscreen,
   });
 
   // Global Keydown Handler for Idle Wake-Up & Desktop Hotkeys
@@ -1142,7 +1242,6 @@ export function HlsPlayer({
       <video
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
-        onProgress={handleProgress}
         onPlay={() => setIsPlaying(true)}
         onPause={() => {
           setIsPlaying(false);
@@ -1368,68 +1467,16 @@ export function HlsPlayer({
         </div>
 
         {/* Bottom Bar: Timeline & Control Trays */}
-        <div className="space-y-3">
-          {/* Seek Progress Bar */}
-          <div className="group relative w-full h-6 flex items-center cursor-pointer touch-none">
-            <input
-              ref={timelineRef}
-              type="range"
-              min="0"
-              max={duration || 100}
-              step="any"
-              value={currentTime}
-              onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none spatial-focus-indicator ${
-                isTimelineFocused ? 'spatial-focus-active ring-2 ring-white/90' : ''
-              }`}
-              style={{
-                background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
-                  (currentTime / (duration || 1)) * 100
-                }% ${(buffered / (duration || 1)) * 100}%, #27272a ${(buffered / (duration || 1)) * 100}%)`,
-              }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            {/* Left Controls: Next Episode & Timestamp */}
-            <div className="flex items-center gap-4">
-              {onNextEpisode && (
-                <button
-                  ref={nextEpRef}
-                  onClick={() => {
-                    isTransitioningRef.current = true;
-                    flushProgress();
-                    onNextEpisode();
-                  }}
-                  className={`p-1.5 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
-                    isNextEpFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
-                  }`}
-                  title="Next Episode"
-                >
-                  <SkipForward className="w-5 h-5" />
-                </button>
-              )}
-
-              <div className="text-xs tabular-nums text-zinc-400 font-semibold tracking-wider">
-                <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
-              </div>
-            </div>
-
-            {/* Right Controls: Fullscreen */}
-            <div className="flex items-center gap-2">
-              <button
-                ref={fullscreenRef}
-                onClick={toggleFullscreen}
-                className={`p-2 text-zinc-400 hover:text-white transition rounded-full cursor-pointer spatial-focus-indicator ${
-                  isFullscreenFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
-                }`}
-                title="Fullscreen (F)"
-              >
-                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PlayerBottomBar
+          videoRef={videoRef}
+          showControls={showControls}
+          onSeek={seek}
+          onSeekTo={seekTo}
+          onTogglePlay={togglePlay}
+          onNextEpisode={onNextEpisode ? handleNextEpisode : undefined}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+        />
       </div>
     </div>
   );

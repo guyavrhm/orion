@@ -37,7 +37,7 @@
     "build": "vite build",
     "build:backend": "tsc -p tsconfig.server.json",
     "build:all": "npm run build && npm run build:backend",
-    "typecheck": "tsc -p tsconfig.server.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
     "preview": "vite preview",
     "start": "node --env-file-if-exists=.env dist/main/server.js",
     "start:all": "node --env-file-if-exists=.env dist/main/server.js --all-in-one",
