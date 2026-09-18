@@ -19,6 +19,7 @@ import { EpisodeCard } from '../components/common/EpisodeCard.js';
 import { calculateProgressPercent, parseDisplayFileId, getShowTargetEpisode } from '../utils/formatters.js';
 import type { HeaderPillShowContext } from '../components/HeaderPill.js';
 import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
+import { useScrollActiveIntoView } from '../hooks/useScrollActiveIntoView.js';
 
 interface MediaDetailViewProps {
   media: MovieMetadata | ShowMetadata;
@@ -618,21 +619,15 @@ export function MediaDetailView({
                             transition={{ duration: 0.15, ease: 'easeOut' }}
                             className="absolute right-0 top-11 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
                           >
-                            <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
-                              {seasons.map((s, idx) => (
-                                <DropdownSeasonItem
-                                  key={s}
-                                  season={s}
-                                  index={idx}
-                                  isActive={activeSeason === s}
-                                  onSelect={() => {
-                                    handleSelectSeason(s);
-                                    setShowSeasonDropdown(false);
-                                  }}
-                                  onDismiss={handleDismissSeasonDropdown}
-                                />
-                              ))}
-                            </div>
+                            <SeasonDropdownList
+                              seasons={seasons}
+                              activeSeason={activeSeason}
+                              onSelectSeason={(s) => {
+                                handleSelectSeason(s);
+                                setShowSeasonDropdown(false);
+                              }}
+                              onDismiss={handleDismissSeasonDropdown}
+                            />
                           </motion.div>
                         </>
                       )}
@@ -797,6 +792,36 @@ function SeasonDropdownTrigger({
   );
 }
 
+export function SeasonDropdownList({
+  seasons,
+  activeSeason,
+  onSelectSeason,
+  onDismiss,
+}: {
+  seasons: number[];
+  activeSeason: number;
+  onSelectSeason: (season: number) => void;
+  onDismiss?: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useScrollActiveIntoView(containerRef, '[data-active="true"]', activeSeason);
+
+  return (
+    <div ref={containerRef} className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
+      {seasons.map((s, idx) => (
+        <DropdownSeasonItem
+          key={s}
+          season={s}
+          index={idx}
+          isActive={activeSeason === s}
+          onSelect={() => onSelectSeason(s)}
+          onDismiss={onDismiss}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function DropdownSeasonItem({
   season,
   index,
@@ -822,6 +847,7 @@ export function DropdownSeasonItem({
     <button
       ref={ref}
       type="button"
+      data-active={isActive}
       onClick={onSelect}
       className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer spatial-focus-indicator ${
         isActive

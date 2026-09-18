@@ -5,7 +5,7 @@ import type { MovieMetadata, ShowMetadata, Stream, UserActiveMediaState } from '
 import { ApiClient } from '../services/api.js';
 import { ImageWithSkeleton } from './common/ImageWithSkeleton.js';
 import { useSpatialNavigation, useFocusable, useZoneBack } from '../context/SpatialNavigationContext.js';
-import { DropdownSeasonItem } from '../views/MediaDetailView.js';
+import { SeasonDropdownList } from '../views/MediaDetailView.js';
 
 export interface HeaderPillShowContext {
   title: string;
@@ -569,21 +569,15 @@ export function HeaderPill({
                 transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="absolute right-0 top-14 z-40 w-44 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl border border-white/10 overflow-hidden"
               >
-                <div className="max-h-60 overflow-y-auto overscroll-contain p-1.5 space-y-0.5">
-                  {showContext.seasons.map((s, idx) => (
-                    <DropdownSeasonItem
-                      key={s}
-                      season={s}
-                      index={idx}
-                      isActive={showContext.activeSeason === s}
-                      onSelect={() => {
-                        showContext.onSelectSeason(s);
-                        setShowNavSeasonDropdown(false);
-                      }}
-                      onDismiss={handleDismissNavSeasonDropdown}
-                    />
-                  ))}
-                </div>
+                <SeasonDropdownList
+                  seasons={showContext.seasons}
+                  activeSeason={showContext.activeSeason}
+                  onSelectSeason={(s) => {
+                    showContext.onSelectSeason(s);
+                    setShowNavSeasonDropdown(false);
+                  }}
+                  onDismiss={handleDismissNavSeasonDropdown}
+                />
               </motion.div>
             </>
           )}

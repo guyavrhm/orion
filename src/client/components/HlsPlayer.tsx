@@ -21,6 +21,7 @@ import { useMediaSession } from '../hooks/useMediaSession.js';
 import { formatTime, getFriendlyErrorMessage } from '../utils/formatters.js';
 import { parseWebVtt, findActiveCueText, isRtlText, getLanguageDisplayName, type SubtitleCue } from '../utils/subtitles.js';
 import { useSpatialNavigation, useFocusable, useZoneBack, isBackKey } from '../context/SpatialNavigationContext.js';
+import { useScrollActiveIntoView } from '../hooks/useScrollActiveIntoView.js';
 
 interface PlayerMenuItemProps {
   id: string;
@@ -56,10 +57,8 @@ function PlayerMenuItem({
   return (
     <button
       ref={ref}
-      onClick={() => {
-        onSelect();
-        onDismiss();
-      }}
+      data-active={isSelected}
+      onClick={onSelect}
       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer spatial-focus-indicator ${
         isSelected
           ? 'bg-red-600 text-white'
@@ -109,7 +108,6 @@ function PlayerSpeedItem({
       ref={ref}
       onClick={() => {
         onSelect(speed);
-        onDismiss();
       }}
       className={`py-1.5 rounded-xl text-xs font-bold transition cursor-pointer spatial-focus-indicator ${
         isSelected
@@ -121,6 +119,89 @@ function PlayerSpeedItem({
     >
       {speed}x
     </button>
+  );
+}
+
+interface PlayerSubtitlesAudioMenuProps {
+  activeSubtitleLang: string | null;
+  streamInfo: StreamInfoResponse | null;
+  audioTracks: { id: number; name: string; lang: string }[];
+  activeAudioTrack: number;
+  mediaId: string;
+  onSelectSubtitle: (lang: string | null) => void;
+  onSelectAudioTrack: (id: number) => void;
+  onDismiss: () => void;
+}
+
+function PlayerSubtitlesAudioMenu({
+  activeSubtitleLang,
+  streamInfo,
+  audioTracks,
+  activeAudioTrack,
+  mediaId,
+  onSelectSubtitle,
+  onSelectAudioTrack,
+  onDismiss,
+}: PlayerSubtitlesAudioMenuProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useScrollActiveIntoView(containerRef, '[data-active="true"]', activeSubtitleLang);
+
+  return (
+    <div className="absolute right-0 top-12 w-64 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl z-40 border border-white/10 overflow-hidden">
+      <div ref={containerRef} className="p-2 max-h-72 overflow-y-auto overscroll-contain space-y-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Subtitles</div>
+          <div className="space-y-0.5">
+            <PlayerMenuItem
+              id="player-sub-item-off"
+              index={0}
+              isSelected={!activeSubtitleLang}
+              label="Off"
+              onSelect={() => {
+                onSelectSubtitle(null);
+                ApiClient.saveSubtitlePreference(mediaId, 'none');
+              }}
+              onDismiss={onDismiss}
+            />
+            {streamInfo?.subtitles?.map((sub, idx) => (
+              <PlayerMenuItem
+                key={sub.lang}
+                id={`player-sub-item-${sub.lang}`}
+                index={1 + idx}
+                isSelected={activeSubtitleLang === sub.lang}
+                label={getLanguageDisplayName(sub.lang)}
+                onSelect={() => {
+                  onSelectSubtitle(sub.lang);
+                  ApiClient.saveSubtitlePreference(mediaId, sub.lang);
+                }}
+                onDismiss={onDismiss}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Audio Track Selector */}
+        {audioTracks.length > 1 && (
+          <div className="border-t border-white/10 pt-2.5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Audio Track</div>
+            <div className="space-y-0.5 max-h-36 overflow-y-auto overscroll-contain">
+              {audioTracks.map((trk, trkIdx) => (
+                <PlayerMenuItem
+                  key={trk.id}
+                  id={`player-audio-item-${trk.id}`}
+                  index={1 + (streamInfo?.subtitles?.length || 0) + trkIdx}
+                  isSelected={activeAudioTrack === trk.id}
+                  label={trk.name}
+                  sublabel={getLanguageDisplayName(trk.lang)}
+                  onSelect={() => onSelectAudioTrack(trk.id)}
+                  onDismiss={onDismiss}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1166,64 +1247,19 @@ export function HlsPlayer({
 
               {/* Subtitles & Audio Dropdown Menu */}
               {showSubtitleMenu && (
-                <div className="absolute right-0 top-12 w-64 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl z-40 border border-white/10 overflow-hidden">
-                  <div className="p-2 max-h-72 overflow-y-auto overscroll-contain space-y-3">
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Subtitles</div>
-                      <div className="space-y-0.5">
-                        <PlayerMenuItem
-                          id="player-sub-item-off"
-                          index={0}
-                          isSelected={!activeSubtitleLang}
-                          label="Off"
-                          onSelect={() => {
-                            setActiveSubtitleLang(null);
-                            ApiClient.saveSubtitlePreference(media.mediaId, 'none');
-                          }}
-                          onDismiss={handleDismissSubtitleMenu}
-                        />
-                        {streamInfo?.subtitles?.map((sub, idx) => (
-                          <PlayerMenuItem
-                            key={sub.lang}
-                            id={`player-sub-item-${sub.lang}`}
-                            index={1 + idx}
-                            isSelected={activeSubtitleLang === sub.lang}
-                            label={getLanguageDisplayName(sub.lang)}
-                            onSelect={() => {
-                              setActiveSubtitleLang(sub.lang);
-                              ApiClient.saveSubtitlePreference(media.mediaId, sub.lang);
-                            }}
-                            onDismiss={handleDismissSubtitleMenu}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Audio Track Selector */}
-                    {audioTracks.length > 1 && (
-                      <div className="border-t border-white/10 pt-2.5">
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Audio Track</div>
-                        <div className="space-y-0.5 max-h-36 overflow-y-auto overscroll-contain">
-                          {audioTracks.map((trk, trkIdx) => (
-                            <PlayerMenuItem
-                              key={trk.id}
-                              id={`player-audio-item-${trk.id}`}
-                              index={1 + (streamInfo?.subtitles?.length || 0) + trkIdx}
-                              isSelected={activeAudioTrack === trk.id}
-                              label={trk.name}
-                              sublabel={getLanguageDisplayName(trk.lang)}
-                              onSelect={() => {
-                                setActiveAudioTrack(trk.id);
-                                if (hlsRef.current) hlsRef.current.audioTrack = trk.id;
-                              }}
-                              onDismiss={handleDismissSubtitleMenu}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <PlayerSubtitlesAudioMenu
+                  activeSubtitleLang={activeSubtitleLang}
+                  streamInfo={streamInfo}
+                  audioTracks={audioTracks}
+                  activeAudioTrack={activeAudioTrack}
+                  mediaId={media.mediaId}
+                  onSelectSubtitle={(lang) => setActiveSubtitleLang(lang)}
+                  onSelectAudioTrack={(trkId) => {
+                    setActiveAudioTrack(trkId);
+                    if (hlsRef.current) hlsRef.current.audioTrack = trkId;
+                  }}
+                  onDismiss={handleDismissSubtitleMenu}
+                />
               )}
             </div>
 
