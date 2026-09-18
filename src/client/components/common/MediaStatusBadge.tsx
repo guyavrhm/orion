@@ -9,7 +9,7 @@ export interface MediaStatusBadgeProps {
   className?: string;
 }
 
-export function MediaStatusBadge({
+export const MediaStatusBadge = React.memo(function MediaStatusBadge({
   isReady = false,
   activeRequest,
   showReadyBadge = true,
@@ -59,6 +59,6 @@ export function MediaStatusBadge({
   }
 
   return null;
-}
+});
 
 export default MediaStatusBadge;

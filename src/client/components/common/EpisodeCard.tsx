@@ -20,7 +20,7 @@ export interface EpisodeCardProps {
   index?: number;
 }
 
-export function EpisodeCard({
+export const EpisodeCard = React.memo(function EpisodeCard({
   episode,
   isReady = false,
   activeRequest,
@@ -145,6 +145,6 @@ export function EpisodeCard({
       </div>
     </motion.div>
   );
-}
+});
 
 export default EpisodeCard;

@@ -21,7 +21,7 @@ export interface CardMediaArtworkProps {
   isFocused?: boolean;
 }
 
-export function CardMediaArtwork({
+export const CardMediaArtwork = React.memo(function CardMediaArtwork({
   src,
   alt,
   aspect = 'poster',
@@ -128,6 +128,6 @@ export function CardMediaArtwork({
       )}
     </div>
   );
-}
+});
 
 export default CardMediaArtwork;

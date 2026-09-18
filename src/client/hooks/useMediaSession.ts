@@ -12,10 +12,7 @@ interface MediaSessionOptions {
 export function useMediaSession({ media, isPlaying, onPlay, onPause, onSeek }: MediaSessionOptions) {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const callbacksRef = useRef({ onPlay, onPause, onSeek });
-
-  useEffect(() => {
-    callbacksRef.current = { onPlay, onPause, onSeek };
-  });
+  callbacksRef.current = { onPlay, onPause, onSeek };
 
   // 1. Screen Wake Lock
   useEffect(() => {

@@ -13,16 +13,22 @@ interface MediaCarouselRowProps {
   children: React.ReactNode;
 }
 
-function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
+const MediaCarouselRow = React.memo(function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const rafRef = useRef<number | null>(null);
 
   const checkScroll = useCallback(() => {
-    const el = rowRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 10);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const el = rowRef.current;
+      if (!el) return;
+      const left = el.scrollLeft > 10;
+      const right = el.scrollLeft < el.scrollWidth - el.clientWidth - 10;
+      setCanScrollLeft((prev) => (prev !== left ? left : prev));
+      setCanScrollRight((prev) => (prev !== right ? right : prev));
+    });
   }, []);
 
   useEffect(() => {
@@ -32,10 +38,11 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
     el.addEventListener('scroll', checkScroll, { passive: true });
     window.addEventListener('resize', checkScroll, { passive: true });
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       el.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
-  }, [checkScroll, children]);
+  }, [checkScroll]);
 
   const handleScroll = (direction: 'left' | 'right') => {
     const el = rowRef.current;
@@ -93,7 +100,7 @@ function MediaCarouselRow({ title, icon, children }: MediaCarouselRowProps) {
       </div>
     </section>
   );
-}
+});
 
 interface ExploreViewProps {
   movies: MovieMetadata[];
@@ -109,7 +116,7 @@ interface ExploreViewProps {
   onPlayDirect: (info: PlayingMediaInfo) => void;
 }
 
-export function ExploreView({
+export const ExploreView = React.memo(function ExploreView({
   movies,
   shows,
   spotlightItems,
@@ -329,7 +336,7 @@ export function ExploreView({
       </div>
     </div>
   );
-}
+});
 
 export default ExploreView;
 

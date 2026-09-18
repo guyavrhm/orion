@@ -359,6 +359,33 @@ function AppContent() {
     setSelectedMedia(cached);
   }, [selectedMedia]);
 
+  const handleShowNavContextChange = useCallback((ctx: HeaderPillShowContext | null) => {
+    setShowNavContext((prev) => {
+      if (!prev && !ctx) return prev;
+      if (
+        prev &&
+        ctx &&
+        prev.title === ctx.title &&
+        prev.logo === ctx.logo &&
+        prev.activeSeason === ctx.activeSeason &&
+        prev.isScrolledPast === ctx.isScrolledPast &&
+        prev.seasons.length === ctx.seasons.length &&
+        prev.seasons.every((s, i) => s === ctx.seasons[i])
+      ) {
+        return prev;
+      }
+      return ctx;
+    });
+  }, []);
+
+  const handleDragProgress = useCallback((progress: number) => {
+    setDetailDragProgress((prev) => {
+      if (prev === progress) return prev;
+      if (Math.abs(prev - progress) < 0.02 && progress !== 0 && progress !== 1) return prev;
+      return progress;
+    });
+  }, []);
+
   const handleBack = useCallback(() => {
     setShowNavContext(null);
     setDetailDragProgress(0);
@@ -426,8 +453,8 @@ function AppContent() {
                   onCacheMediaDetails={handleCacheMediaDetails}
                   onUpdateProgressMap={handleUpdateProgressMap}
                   onUpdateReadyMap={handleUpdateReadyMap}
-                  onShowNavContextChange={setShowNavContext}
-                  onDragProgress={setDetailDragProgress}
+                  onShowNavContextChange={handleShowNavContextChange}
+                  onDragProgress={handleDragProgress}
                 />
               )}
             </AnimatePresence>

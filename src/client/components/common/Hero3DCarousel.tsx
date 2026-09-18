@@ -29,7 +29,7 @@ function getWrappedOffset(index: number, activeIndex: number, length: number): n
   return diff;
 }
 
-export function Hero3DCarousel({
+export const Hero3DCarousel = React.memo(function Hero3DCarousel({
   items,
   activeIndex = 0,
   onActiveIndexChange,
@@ -106,7 +106,6 @@ export function Hero3DCarousel({
                   scale: profile.scale,
                   z: profile.z,
                   opacity: profile.opacity,
-                  filter: `brightness(${profile.brightness}%)`,
                 }}
                 transition={{ type: 'spring', stiffness: 280, damping: 28, mass: 0.8 }}
                 style={{
@@ -115,10 +114,10 @@ export function Hero3DCarousel({
                   pointerEvents: abs > 2 ? 'none' : 'auto',
                 }}
                 onClick={() => !isCenter && onActiveIndexChange?.(idx)}
-                className={`absolute w-[84vw] sm:w-[72vw] md:w-[64vw] lg:w-[58vw] max-w-5xl h-full rounded-3xl overflow-hidden glass-panel border shadow-2xl group ${
+                className={`absolute w-[84vw] sm:w-[72vw] md:w-[64vw] lg:w-[58vw] max-w-5xl h-full rounded-3xl overflow-hidden border shadow-2xl group ${
                   isCenter
-                    ? 'cursor-default ring-1 ring-white/15 border-white/10'
-                    : 'cursor-pointer hover:border-white/25 border-white/10'
+                    ? 'cursor-default ring-1 ring-white/15 border-white/10 glass-panel'
+                    : 'cursor-pointer hover:border-white/25 border-white/10 bg-zinc-900/90'
                 }`}
               >
                 {/* Background Artwork */}
@@ -140,6 +139,13 @@ export function Hero3DCarousel({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
                   <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/45 to-transparent" />
+                  {/* Native GPU-friendly Dimmer Scrim for Off-Center 3D Cards */}
+                  {!isCenter && (
+                    <div
+                      className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300"
+                      style={{ opacity: (100 - profile.brightness) / 100 }}
+                    />
+                  )}
                 </div>
 
                 {/* Active Card Hero Content */}
@@ -215,6 +221,6 @@ export function Hero3DCarousel({
       </div>
     </section>
   );
-}
+});
 
 export default Hero3DCarousel;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Film, Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import type {
@@ -107,14 +107,26 @@ export function MediaDetailView({
   const dragStartYRef = useRef(0);
   const isHorizontalGestureRef = useRef<boolean | null>(null);
 
-  // Synchronize dragProgress 1:1 with motion value
+  // Synchronize dragProgress with motion value (throttled via RAF to prevent main thread flooding)
   useEffect(() => {
+    let rafId: number | null = null;
+    let lastReported = 0;
+
     const unsubscribe = dragX.on('change', (latestX) => {
       const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 375;
       const progress = Math.min(1, Math.max(0, latestX / screenWidth));
-      onDragProgress?.(progress);
+
+      if (progress === 0 || progress === 1 || Math.abs(progress - lastReported) >= 0.02) {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          lastReported = progress;
+          onDragProgress?.(progress);
+        });
+      }
     });
+
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       unsubscribe();
       onDragProgress?.(0);
     };
@@ -266,7 +278,10 @@ export function MediaDetailView({
   const isMovie = current.type === 'movie';
   const showMeta = isMovie ? null : (current as ShowMetadata);
   const episodes = showMeta?.episodes || [];
-  const seasons = Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
+  const seasons = useMemo(() => {
+    if (!episodes || episodes.length === 0) return [];
+    return Array.from(new Set(episodes.map((e) => e.season))).sort((a, b) => a - b);
+  }, [episodes]);
 
   // Dynamic layout measurement: detect if season pills fit on the single header line
   useEffect(() => {

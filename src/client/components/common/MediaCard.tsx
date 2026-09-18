@@ -23,7 +23,7 @@ export interface MediaCardProps {
   index?: number;
 }
 
-export function MediaCard({
+export const MediaCard = React.memo(function MediaCard({
   title,
   poster,
   type,
@@ -92,6 +92,6 @@ export function MediaCard({
       </div>
     </motion.div>
   );
-}
+});
 
 export default MediaCard;

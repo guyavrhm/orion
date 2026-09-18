@@ -23,7 +23,7 @@ export interface ContinueWatchingCardProps {
   index?: number;
 }
 
-export function ContinueWatchingCard({
+export const ContinueWatchingCard = React.memo(function ContinueWatchingCard({
   title,
   subtitle,
   thumbnail,
@@ -97,6 +97,6 @@ export function ContinueWatchingCard({
       </div>
     </motion.div>
   );
-}
+});
 
 export default ContinueWatchingCard;

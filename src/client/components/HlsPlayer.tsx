@@ -259,6 +259,19 @@ export function HlsPlayer({
   const initialTimestampRef = useRef<number>(initialTimestamp);
   const isTransitioningRef = useRef<boolean>(false);
   const parsedCuesRef = useRef<SubtitleCue[]>([]);
+  const currentSubtitleTextRef = useRef<string>('');
+  const currentTimeRef = useRef<number>(0);
+  const showControlsRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    showControlsRef.current = showControls;
+    if (showControls && videoRef.current) {
+      const time = videoRef.current.currentTime;
+      setCurrentTime(time);
+      setDuration(videoRef.current.duration || 0);
+      updateBuffer(videoRef.current, time);
+    }
+  }, [showControls]);
 
   // 1. Fetch Stream Info & Subtitle Preference
   useEffect(() => {
@@ -447,6 +460,7 @@ export function HlsPlayer({
   useEffect(() => {
     if (!activeSubtitleLang || !streamInfo?.subtitles) {
       parsedCuesRef.current = [];
+      currentSubtitleTextRef.current = '';
       setCurrentSubtitleText('');
       return;
     }
@@ -454,6 +468,7 @@ export function HlsPlayer({
     const track = streamInfo.subtitles.find((s) => s.lang === activeSubtitleLang);
     if (!track) {
       parsedCuesRef.current = [];
+      currentSubtitleTextRef.current = '';
       setCurrentSubtitleText('');
       return;
     }
@@ -469,11 +484,14 @@ export function HlsPlayer({
         const cues = parseWebVtt(vttText);
         parsedCuesRef.current = cues;
         const videoTime = videoRef.current?.currentTime || 0;
-        setCurrentSubtitleText(findActiveCueText(cues, videoTime));
+        const matched = findActiveCueText(cues, videoTime);
+        currentSubtitleTextRef.current = matched;
+        setCurrentSubtitleText(matched);
       })
       .catch(() => {
         if (!isSubMounted) return;
         parsedCuesRef.current = [];
+        currentSubtitleTextRef.current = '';
         setCurrentSubtitleText('');
       });
 
@@ -501,14 +519,21 @@ export function HlsPlayer({
     if (!video) return;
 
     const time = video.currentTime;
-    setCurrentTime(time);
-    setDuration(video.duration || 0);
+    currentTimeRef.current = time;
 
-    // Buffer progress: match active buffer chunk around current playhead
-    updateBuffer(video, time);
+    // Subtitle cue matching: only trigger React state update when text actually changes
+    const newSubText = findActiveCueText(parsedCuesRef.current, time);
+    if (newSubText !== currentSubtitleTextRef.current) {
+      currentSubtitleTextRef.current = newSubText;
+      setCurrentSubtitleText(newSubText);
+    }
 
-    // Subtitle cue matching
-    setCurrentSubtitleText(findActiveCueText(parsedCuesRef.current, time));
+    // Only update timeline state when controls overlay is visible to save CPU/battery
+    if (showControlsRef.current) {
+      setCurrentTime(time);
+      setDuration(video.duration || 0);
+      updateBuffer(video, time);
+    }
   };
 
   const handleProgress = () => {
