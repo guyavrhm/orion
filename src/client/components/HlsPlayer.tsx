@@ -761,7 +761,8 @@ export function HlsPlayer({
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-  }, []);
+    setFocused('player-play-pause-btn', false);
+  }, [setFocused]);
 
   const resetHideTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
@@ -769,10 +770,10 @@ export function HlsPlayer({
     }
     if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
       controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
+        dismissControls();
       }, 3500);
     }
-  }, [isPlaying, showSubtitleMenu, showSettingsMenu]);
+  }, [isPlaying, showSubtitleMenu, showSettingsMenu, dismissControls]);
 
   useEffect(() => {
     if (!showControls || !isPlaying || showSubtitleMenu || showSettingsMenu) {
@@ -1028,6 +1029,7 @@ export function HlsPlayer({
         if (isLeft) {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           seek(-10);
           setShowControls(true);
           triggerActivity();
@@ -1038,6 +1040,7 @@ export function HlsPlayer({
         if (isRight) {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
           seek(10);
           setShowControls(true);
           triggerActivity();
@@ -1045,9 +1048,21 @@ export function HlsPlayer({
           return;
         }
 
-        if (isUp || isDown || isEnter) {
+        if (isEnter) {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
+          togglePlay();
+          setShowControls(true);
+          triggerActivity();
+          setFocused('player-play-pause-btn', false);
+          return;
+        }
+
+        if (isUp || isDown) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           setShowControls(true);
           triggerActivity();
           setFocused('player-play-pause-btn', false);
@@ -1058,8 +1073,8 @@ export function HlsPlayer({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [
     showControls,
     togglePlay,
