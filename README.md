@@ -2,7 +2,7 @@
 
 # Orion
 
-### Self-Hosted Torrent Client and Media Server
+### Self-Hosted Torrent Client & Media Server
 
 *Simple, Reliable, Universal*
 
@@ -26,7 +26,7 @@ Orion is a lightweight self-hosted torrent client and media server built for rel
 Instead of relying on fragile live torrent streaming, or complex setups involving multiple services, Orion handles the entire media lifecycle automatically, even on a low-spec server. Everything is fully prepared in advance for instant playback across multiple devices.
 
 Orion is split into two distinct halves:
-1. **The Engine (Backend):** Self-hosted on your server or computer. It automatically discovers and verifies torrent streams, manages downloads, fixes subtitles, transcodes media, and serves cached content to multiple clients.
+1. **The Engine (Backend):** Self-hosted on your server or computer. It automatically discovers and verifies torrent streams, manages downloads, fixes subtitles, transcodes media, and serves content to multiple clients.
 2. **The Player (Universal PWA):** A lightweight web client that works on virtually any browser, phone, tablet, or smart TV.
 
 > Queue up an entire season while you're at work or asleep. Once ready, open the app and play anywhere.
