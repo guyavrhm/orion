@@ -1532,7 +1532,7 @@ export function HlsPlayer({
           dir={isRtlText(currentSubtitleText) ? 'rtl' : 'ltr'}
         >
           <span
-            className="inline-block max-w-[88%] md:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/90 shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
+            className="inline-block max-w-[88%] md:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/75 shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
             style={{
               fontSize: 'clamp(0.95rem, 3.2vmin, 2rem)',
               lineHeight: 1.35,
