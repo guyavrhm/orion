@@ -55,7 +55,7 @@ export const ContinueWatchingCard = React.memo(function ContinueWatchingCard({
     <div
       ref={focusId ? (focusRef as any) : undefined}
       onClick={onClick}
-      className={`group relative flex-shrink-0 cursor-pointer flex flex-col space-y-2 select-none rounded-2xl transition-transform duration-150 ease-out active:scale-[0.98] ${
+      className={`group relative flex-shrink-0 cursor-pointer flex flex-col space-y-2 select-none rounded-2xl transition-transform duration-300 ease-out active:scale-[0.98] ${
         isSpatialFocused
           ? '-translate-y-1'
           : isKeyboardNav

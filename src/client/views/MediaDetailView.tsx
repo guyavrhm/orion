@@ -96,15 +96,12 @@ export function MediaDetailView({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Reset view state, scroll position, and spatial focus on media change
+  // Reset view state and spatial focus on media change
   useEffect(() => {
     setUserSelectedSeason(null);
     setShowSeasonDropdown(false);
     setRequestingId(null);
     setIsPastSeasonPicker(false);
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    }
     pushZone('detail', 'detail-stream-action-btn');
   }, [media.id, pushZone]);
 

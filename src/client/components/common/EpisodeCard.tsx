@@ -53,7 +53,7 @@ export const EpisodeCard = React.memo(function EpisodeCard({
   return (
     <div
       ref={focusId ? (focusRef as any) : undefined}
-      className={`group relative flex flex-col justify-between space-y-3 rounded-2xl select-none transition-transform duration-150 ease-out ${
+      className={`group relative flex flex-col justify-between space-y-3 rounded-2xl select-none transition-transform duration-300 ease-out ${
         isSpatialFocused
           ? '-translate-y-1'
           : isKeyboardNav

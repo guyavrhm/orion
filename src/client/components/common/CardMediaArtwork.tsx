@@ -63,7 +63,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
     <div
       className={`${
         aspect === 'poster' ? 'aspect-[2/3]' : 'aspect-video'
-      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border shadow-lg transition-[border-color,box-shadow] duration-150 ease-out ${
+      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border shadow-lg transition-[border-color,box-shadow] duration-300 ease-out ${
         isFocused
           ? 'border-white/90 ring-2 ring-white/90 shadow-2xl'
           : 'border-white/10 group-hover:border-white/25 group-hover:shadow-2xl'
@@ -72,7 +72,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
       <ImageWithSkeleton
         src={src}
         alt={alt}
-        className={`w-full h-full object-cover transition-transform duration-200 ease-out ${
+        className={`w-full h-full object-cover transition-transform duration-500 ease-out ${
           isFocused ? 'scale-105 opacity-100' : 'opacity-90 group-hover:scale-105 group-hover:opacity-100'
         }`}
         fallback={fallback || defaultFallback}
