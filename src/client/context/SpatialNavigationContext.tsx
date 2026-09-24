@@ -817,8 +817,12 @@ export function SpatialNavigationProvider({
         if (isDown) {
           e.preventDefault();
           navigate('down');
+        } else if (isUp && target instanceof HTMLInputElement && target.type === 'range') {
+          e.preventDefault();
+          navigate('up');
         } else if (isRight && target instanceof HTMLInputElement) {
-          if (target.selectionStart === target.value.length && target.selectionEnd === target.value.length) {
+          const isTextSelectable = /^(text|search|password|tel|url)$/.test(target.type);
+          if (isTextSelectable && target.selectionStart === target.value.length && target.selectionEnd === target.value.length) {
             e.preventDefault();
             navigate('right');
           }

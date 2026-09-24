@@ -212,6 +212,7 @@ interface PlayerBottomBarProps {
   onSeekTo: (time: number) => void;
   onTogglePlay: () => void;
   onNextEpisode?: () => void;
+  previewTime?: number | null;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
 }
@@ -219,6 +220,7 @@ interface PlayerBottomBarProps {
 const PlayerBottomBar = React.memo(function PlayerBottomBar({
   videoRef,
   showControls,
+  previewTime,
   onSeek,
   onSeekTo,
   onTogglePlay,
@@ -229,6 +231,23 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [buffered, setBuffered] = useState<number>(0);
+
+  const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
+  const isScrubbingRef = useRef<boolean>(false);
+  const [scrubTime, setScrubTime] = useState<number>(0);
+  const scrubTimeRef = useRef<number>(0);
+  const wasPlayingBeforeScrubRef = useRef<boolean>(false);
+
+  const hasPreview = previewTime !== null && previewTime !== undefined;
+  const displayTime = isScrubbing ? scrubTime : hasPreview ? previewTime : currentTime;
+
+  // Sync currentTime to previewTime when previewing (prevents snapping/flicker on trickplay release)
+  useEffect(() => {
+    if (previewTime !== null && previewTime !== undefined) {
+      setCurrentTime(previewTime);
+      lastTimeRef.current = previewTime;
+    }
+  }, [previewTime]);
 
   const { ref: timelineRef, isSpatialFocused: isTimelineFocused } = useFocusable<HTMLInputElement>({
     id: 'player-timeline-slider',
@@ -259,11 +278,69 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
 
   const lastTimeRef = useRef<number>(0);
 
+  const commitScrub = useCallback(() => {
+    if (!isScrubbingRef.current) return;
+    isScrubbingRef.current = false;
+    setIsScrubbing(false);
+    const finalTime = scrubTimeRef.current;
+    onSeekTo(finalTime);
+    setCurrentTime(finalTime);
+    lastTimeRef.current = finalTime;
+    const video = videoRef.current;
+    if (wasPlayingBeforeScrubRef.current && video) {
+      video.play().catch(() => {});
+    }
+  }, [onSeekTo, videoRef]);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLInputElement>) => {
+      if (e.button !== 0) return;
+
+      const video = videoRef.current;
+      wasPlayingBeforeScrubRef.current = video ? !video.paused : false;
+      if (video && !video.paused) {
+        video.pause();
+      }
+
+      isScrubbingRef.current = true;
+      setIsScrubbing(true);
+      const val = parseFloat((e.target as HTMLInputElement).value);
+      setScrubTime(val);
+      scrubTimeRef.current = val;
+
+      const handleGlobalPointerUp = () => {
+        window.removeEventListener('pointerup', handleGlobalPointerUp);
+        window.removeEventListener('pointercancel', handleGlobalPointerUp);
+        commitScrub();
+      };
+
+      window.addEventListener('pointerup', handleGlobalPointerUp);
+      window.addEventListener('pointercancel', handleGlobalPointerUp);
+    },
+    [videoRef, commitScrub]
+  );
+
+  const handleSliderChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = parseFloat(e.target.value);
+      scrubTimeRef.current = val;
+      if (isScrubbingRef.current) {
+        setScrubTime(val);
+      } else {
+        onSeekTo(val);
+        setCurrentTime(val);
+        lastTimeRef.current = val;
+      }
+    },
+    [onSeekTo]
+  );
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const updateBufferAndTimeline = (force = false) => {
+      if (isScrubbing || hasPreview) return;
       const cur = video.currentTime;
       if (!force && Math.abs(cur - lastTimeRef.current) < 0.5) {
         return;
@@ -318,7 +395,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
       video.removeEventListener('loadedmetadata', onMetadata);
       video.removeEventListener('durationchange', onMetadata);
     };
-  }, [videoRef, showControls]);
+  }, [videoRef, showControls, isScrubbing, hasPreview]);
 
   return (
     <div className="space-y-3">
@@ -330,14 +407,15 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
           min="0"
           max={duration || 100}
           step="any"
-          value={currentTime}
-          onChange={(e) => onSeekTo(parseFloat(e.target.value))}
+          value={displayTime}
+          onPointerDown={handlePointerDown}
+          onChange={handleSliderChange}
           className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none spatial-focus-indicator ${
             isTimelineFocused ? 'spatial-focus-active ring-2 ring-white/90' : ''
           }`}
           style={{
-            background: `linear-gradient(to right, #dc2626 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
-              (currentTime / (duration || 1)) * 100
+            background: `linear-gradient(to right, #dc2626 ${(displayTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${
+              (displayTime / (duration || 1)) * 100
             }% ${(buffered / (duration || 1)) * 100}%, #27272a ${(buffered / (duration || 1)) * 100}%)`,
           }}
         />
@@ -360,7 +438,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
           )}
 
           <div className="text-xs tabular-nums text-zinc-400 font-semibold tracking-wider">
-            <span className="text-white">{formatTime(currentTime)}</span> / {formatTime(duration)}
+            <span className="text-white">{formatTime(displayTime)}</span> / {formatTime(duration)}
           </div>
         </div>
 
@@ -397,7 +475,7 @@ export function HlsPlayer({
   onProgressUpdate,
   onNextEpisode,
 }: HlsPlayerProps) {
-  const { pushZone, popZone, setFocused } = useSpatialNavigation();
+  const { pushZone, popZone, setFocused, getFocusedId } = useSpatialNavigation();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -418,8 +496,17 @@ export function HlsPlayer({
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // Overlay state
+  // Overlay & Trickplay state
   const [showControls, setShowControls] = useState<boolean>(true);
+  const [trickplaySeekTime, setTrickplaySeekTime] = useState<number | null>(null);
+  const activeSeekRef = useRef<{
+    direction: 'left' | 'right';
+    targetTime: number;
+    startTime: number;
+    lastTickTime: number;
+    repeatCount: number;
+    wasPlaying: boolean;
+  } | null>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subtitles & Audio state
@@ -768,12 +855,13 @@ export function HlsPlayer({
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    if (isPlaying && !showSubtitleMenu && !showSettingsMenu) {
+    const isVideoPlaying = videoRef.current ? !videoRef.current.paused : false;
+    if (isVideoPlaying && !showSubtitleMenu && !showSettingsMenu) {
       controlsTimeoutRef.current = setTimeout(() => {
         dismissControls();
       }, 3500);
     }
-  }, [isPlaying, showSubtitleMenu, showSettingsMenu, dismissControls]);
+  }, [showSubtitleMenu, showSettingsMenu, dismissControls]);
 
   useEffect(() => {
     if (!showControls || !isPlaying || showSubtitleMenu || showSettingsMenu) {
@@ -974,17 +1062,22 @@ export function HlsPlayer({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (
-        target?.tagName === 'INPUT' ||
+      const isTextInput =
+        (target?.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'range') ||
         target?.tagName === 'TEXTAREA' ||
-        target?.getAttribute('contenteditable') === 'true'
-      ) {
+        target?.getAttribute('contenteditable') === 'true';
+
+      if (isTextInput) {
         return;
       }
 
       const isSpace = e.key === ' ' || e.code === 'Space' || e.keyCode === 32 || e.code === 'KeyK';
-      const isLeft = e.key === 'ArrowLeft' || e.keyCode === 37 || e.code === 'KeyJ';
-      const isRight = e.key === 'ArrowRight' || e.keyCode === 39 || e.code === 'KeyL';
+      const isArrowLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
+      const isArrowRight = e.key === 'ArrowRight' || e.keyCode === 39;
+      const isJ = e.code === 'KeyJ';
+      const isL = e.code === 'KeyL';
+      const isLeft = isArrowLeft || isJ;
+      const isRight = isArrowRight || isL;
       const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
       const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
       const isEnter = e.key === 'Enter' || e.keyCode === 13;
@@ -994,6 +1087,7 @@ export function HlsPlayer({
       if (isSpace) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         togglePlay();
         setShowControls(true);
         triggerActivity();
@@ -1019,32 +1113,97 @@ export function HlsPlayer({
         return;
       }
 
+      // Determine if Left / Right / J / L should trigger player seek / trickplay:
+      // J and L are dedicated transport hotkeys and always seek.
+      // Arrow keys trigger seek when controls are hidden, OR when focused on play/pause or timeline slider, OR no focused element
+      const currentFocusedId = getFocusedId();
+      const isFocusedOnNavButtons =
+        showControls &&
+        currentFocusedId &&
+        currentFocusedId !== 'player-play-pause-btn' &&
+        currentFocusedId !== 'player-timeline-slider';
+
+      const shouldSeek = (isJ || isL) || ((isArrowLeft || isArrowRight) && !isFocusedOnNavButtons);
+
+      if (shouldSeek && (isLeft || isRight)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const video = videoRef.current;
+        if (!video) return;
+
+        const direction = isLeft ? 'left' : 'right';
+        const now = Date.now();
+
+        if (!activeSeekRef.current || activeSeekRef.current.direction !== direction) {
+          const wasPlaying = activeSeekRef.current ? activeSeekRef.current.wasPlaying : !video.paused;
+          const initialTime = activeSeekRef.current ? activeSeekRef.current.targetTime : video.currentTime;
+          const delta = direction === 'left' ? -10 : 10;
+          const targetTime = Math.max(0, Math.min(video.duration || 0, initialTime + delta));
+
+          activeSeekRef.current = {
+            direction,
+            targetTime,
+            startTime: now,
+            lastTickTime: now,
+            repeatCount: 0,
+            wasPlaying,
+          };
+
+          // Immediate seek for single tap responsiveness
+          video.currentTime = targetTime;
+          setShowControls(true);
+          triggerActivity();
+          if (!showControls || !currentFocusedId) {
+            setFocused('player-play-pause-btn', false);
+          }
+          return;
+        }
+
+        // Long press / repeat event handling
+        const seekState = activeSeekRef.current;
+        seekState.repeatCount += 1;
+
+        // On first repeat tick, pause video playback so audio stops and decoder rests
+        if (seekState.repeatCount === 1) {
+          if (seekState.wasPlaying && !video.paused) {
+            video.pause();
+          }
+        }
+
+        // Throttle rapid repeat calculations to ~60ms intervals
+        if (now - seekState.lastTickTime < 60) {
+          return;
+        }
+
+        const elapsed = now - seekState.startTime;
+        let step = 10;
+        if (elapsed > 3000) {
+          step = 60; // > 3s: fast skip (60s jumps)
+        } else if (elapsed > 1200) {
+          step = 30; // 1.2s - 3s: medium skip (30s jumps)
+        } else {
+          step = 10; // < 1.2s: fine skip (10s jumps)
+        }
+
+        seekState.lastTickTime = now;
+        const delta = direction === 'left' ? -step : step;
+        seekState.targetTime = Math.max(0, Math.min(video.duration || 0, seekState.targetTime + delta));
+
+        setTrickplaySeekTime(seekState.targetTime);
+        setShowControls(true);
+        triggerActivity();
+        if (!showControls || !currentFocusedId) {
+          setFocused('player-play-pause-btn', false);
+        }
+        return;
+      }
+
       // When controls are hidden, wake up overlay on navigation / action keys
       if (!showControls) {
         if (isBack) {
           // Allow zone back handler to trigger dismissal/close
-          return;
-        }
-
-        if (isLeft) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          seek(-10);
-          setShowControls(true);
-          triggerActivity();
-          setFocused('player-play-pause-btn', false);
-          return;
-        }
-
-        if (isRight) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          seek(10);
-          setShowControls(true);
-          triggerActivity();
-          setFocused('player-play-pause-btn', false);
           return;
         }
 
@@ -1073,17 +1232,74 @@ export function HlsPlayer({
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const isArrowLeft = e.key === 'ArrowLeft' || e.keyCode === 37;
+      const isArrowRight = e.key === 'ArrowRight' || e.keyCode === 39;
+      const isJ = e.code === 'KeyJ';
+      const isL = e.code === 'KeyL';
+      const isLeft = isArrowLeft || isJ;
+      const isRight = isArrowRight || isL;
+
+      if (activeSeekRef.current) {
+        const matchesDirection =
+          (activeSeekRef.current.direction === 'left' && isLeft) ||
+          (activeSeekRef.current.direction === 'right' && isRight);
+
+        if (matchesDirection) {
+          const seekState = activeSeekRef.current;
+          activeSeekRef.current = null;
+
+          if (seekState.repeatCount > 0) {
+            const video = videoRef.current;
+            if (video) {
+              video.currentTime = seekState.targetTime;
+              if (seekState.wasPlaying) {
+                video.play().catch(() => {});
+              }
+            }
+          }
+
+          setTrickplaySeekTime(null);
+          triggerActivity();
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (activeSeekRef.current) {
+        const seekState = activeSeekRef.current;
+        activeSeekRef.current = null;
+        if (seekState.repeatCount > 0) {
+          const video = videoRef.current;
+          if (video) {
+            video.currentTime = seekState.targetTime;
+            if (seekState.wasPlaying) {
+              video.play().catch(() => {});
+            }
+          }
+        }
+        setTrickplaySeekTime(null);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+    window.addEventListener('keyup', handleKeyUp, { capture: true });
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
+      window.removeEventListener('blur', handleWindowBlur);
+    };
   }, [
     showControls,
     togglePlay,
-    seek,
     setFocused,
     triggerActivity,
     toggleFullscreen,
     activeSubtitleLang,
     streamInfo,
+    getFocusedId,
   ]);
 
   const isTouchInteractionRef = useRef<boolean>(false);
@@ -1457,6 +1673,7 @@ export function HlsPlayer({
             loading ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
+
           <button
             onClick={() => seek(-10)}
             tabIndex={-1}
@@ -1491,6 +1708,7 @@ export function HlsPlayer({
         <PlayerBottomBar
           videoRef={videoRef}
           showControls={showControls}
+          previewTime={trickplaySeekTime}
           onSeek={seek}
           onSeekTo={seekTo}
           onTogglePlay={togglePlay}
