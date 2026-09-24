@@ -61,6 +61,7 @@ export function MediaDetailView({
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
   const [useDropdown, setUseDropdown] = useState(false);
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
+  const [isPastSeasonPicker, setIsPastSeasonPicker] = useState<boolean>(false);
 
   const handleDismissSeasonDropdown = useCallback(() => {
     popZone('season-menu');
@@ -95,10 +96,17 @@ export function MediaDetailView({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Reset selected season on media change
+  // Reset view state, scroll position, and spatial focus on media change
   useEffect(() => {
     setUserSelectedSeason(null);
-  }, [media.id]);
+    setShowSeasonDropdown(false);
+    setRequestingId(null);
+    setIsPastSeasonPicker(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+    pushZone('detail', 'detail-stream-action-btn');
+  }, [media.id, pushZone]);
 
   // Interactive Netflix/Disney+ Grade Drag-to-Dismiss gesture (Mobile Only)
   const dragX = useMotionValue(0);
@@ -365,8 +373,6 @@ export function MediaDetailView({
   const globalTarget = getShowTargetEpisode(current.id, episodes, progressMap);
   const activeSeason = userSelectedSeason ?? globalTarget.season;
   const currentSeasonEpisodes = episodes.filter((e) => e.season === activeSeason);
-
-  const [isPastSeasonPicker, setIsPastSeasonPicker] = useState<boolean>(false);
 
   // Native high-performance IntersectionObserver with dynamic navbar bottom measurement
   useEffect(() => {

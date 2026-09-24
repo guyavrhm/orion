@@ -440,7 +440,7 @@ function AppContent() {
             <AnimatePresence>
               {selectedMedia && (
                 <MediaDetailView
-                  key={`media-detail-${selectedMedia.id}`}
+                  key="media-detail-view"
                   media={selectedMedia}
                   progressMap={progressMap}
                   readyMap={readyMap}

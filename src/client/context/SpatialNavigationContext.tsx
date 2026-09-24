@@ -38,7 +38,7 @@ export interface FocusableNode {
 
 export interface SpatialNavigationActions {
   register: (node: FocusableNode) => void;
-  unregister: (id: string) => void;
+  unregister: (id: string, element?: HTMLElement | null) => void;
   setFocused: (id: string | null, scrollToView?: boolean) => void;
   pushZone: (zone: string, defaultFocusId?: string) => void;
   popZone: (zone: string) => void;
@@ -352,7 +352,13 @@ export function SpatialNavigationProvider({
     }
   }, [setFocused]);
 
-  const unregister = useCallback((id: string) => {
+  const unregister = useCallback((id: string, element?: HTMLElement | null) => {
+    if (element) {
+      const existing = nodesRef.current.get(id);
+      if (existing && existing.element && existing.element !== element) {
+        return;
+      }
+    }
     nodesRef.current.delete(id);
     if (focusedIdRef.current === id) {
       queueMicrotask(() => {
@@ -1063,7 +1069,7 @@ export function useFocusable<T extends HTMLElement = HTMLDivElement>({
 
   useEffect(() => {
     if (disabled) {
-      actions.unregister(id);
+      actions.unregister(id, elementRef.current);
       return;
     }
 
@@ -1088,12 +1094,13 @@ export function useFocusable<T extends HTMLElement = HTMLDivElement>({
     actions.register(node);
 
     return () => {
-      actions.unregister(id);
+      actions.unregister(id, elementRef.current);
     };
   }, [id, zone, section, index, autoFocus, priority, disabled, actions]);
 
   const setRef = useCallback(
     (el: T | null) => {
+      const prevEl = elementRef.current;
       elementRef.current = el;
       if (el && !disabled) {
         actions.register({
@@ -1113,6 +1120,8 @@ export function useFocusable<T extends HTMLElement = HTMLDivElement>({
           priority,
           disabled,
         });
+      } else if (!el && prevEl) {
+        actions.unregister(id, prevEl);
       }
     },
     [id, zone, section, index, autoFocus, priority, disabled, actions]
