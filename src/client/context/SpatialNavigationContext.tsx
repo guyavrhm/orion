@@ -296,6 +296,7 @@ export function SpatialNavigationProvider({
         if (
           newNode.section === 'dropdown-items' ||
           newNode.section === 'player-menu-items' ||
+          newNode.section === 'player-menu-subtitles' ||
           newNode.zone.endsWith('-menu') ||
           newNode.zone.endsWith('-dropdown') ||
           newNode.section === 'search-results'
@@ -311,6 +312,9 @@ export function SpatialNavigationProvider({
               parentScroll.scrollTop += nodeRect.bottom - parentRect.bottom + 4;
             }
           }
+        } else if (newNode.zone === 'player') {
+          // Fixed fullscreen player overlay: do not trigger viewport DOM scrolling
+          return;
         } else if (
           newNode.section === 'header' ||
           newNode.section === 'detail-header' ||
@@ -334,9 +338,25 @@ export function SpatialNavigationProvider({
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         } else {
+          const oldNode = prevId ? nodesRef.current.get(prevId) : null;
+          const isSectionChange = !oldNode || !newNode || oldNode.section !== newNode.section;
+          let isVerticalGridOrList = false;
+          if (newNode.section) {
+            const sections = zoneSectionsRef.current.get(newNode.zone || activeZoneRef.current);
+            const currentSectionConfig = sections?.find((s) => s.id === newNode.section);
+            if (
+              currentSectionConfig &&
+              (currentSectionConfig.type === 'grid' || currentSectionConfig.type === 'list')
+            ) {
+              isVerticalGridOrList = true;
+            } else if (newNode.section === 'detail-episodes') {
+              isVerticalGridOrList = true;
+            }
+          }
+
           newNode.element.scrollIntoView({
             behavior: 'smooth',
-            block: 'center',
+            block: isSectionChange || isVerticalGridOrList ? 'center' : 'nearest',
             inline: 'nearest',
           });
         }
@@ -808,8 +828,17 @@ export function SpatialNavigationProvider({
 
       if (isBack) {
         e.preventDefault();
+        if (!isKeyboardNavRef.current) {
+          setIsKeyboardNav(true);
+        }
         triggerBack();
         return;
+      }
+
+      if (isUp || isDown || isLeft || isRight || isEnter) {
+        if (!isKeyboardNavRef.current) {
+          setIsKeyboardNav(true);
+        }
       }
 
       if (isUp) {
@@ -841,13 +870,12 @@ export function SpatialNavigationProvider({
       const dx = Math.abs(e.clientX - lastMousePosRef.current.x);
       const dy = Math.abs(e.clientY - lastMousePosRef.current.y);
 
-      if (dx > 6 || dy > 6) {
+      // Require noticeable movement to exit keyboard mode
+      // (prevents minor air-mouse remote drift or slight desk vibrations from clearing focus)
+      if (dx > 25 || dy > 25) {
         lastMousePosRef.current = { x: e.clientX, y: e.clientY };
         if (isKeyboardNavRef.current) {
           setIsKeyboardNav(false);
-          if (typeof document !== 'undefined') {
-            document.body.classList.remove('keyboard-nav-active');
-          }
         }
       }
     };
@@ -855,9 +883,6 @@ export function SpatialNavigationProvider({
     const handlePointerDown = () => {
       if (isKeyboardNavRef.current) {
         setIsKeyboardNav(false);
-        if (typeof document !== 'undefined') {
-          document.body.classList.remove('keyboard-nav-active');
-        }
       }
     };
 

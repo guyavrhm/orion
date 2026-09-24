@@ -63,7 +63,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
     <div
       className={`${
         aspect === 'poster' ? 'aspect-[2/3]' : 'aspect-video'
-      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border shadow-lg transition-all duration-300 ${
+      } w-full rounded-2xl overflow-hidden bg-zinc-900 relative border shadow-lg transition-[border-color,box-shadow] duration-150 ease-out ${
         isFocused
           ? 'border-white/90 ring-2 ring-white/90 shadow-2xl'
           : 'border-white/10 group-hover:border-white/25 group-hover:shadow-2xl'
@@ -72,7 +72,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
       <ImageWithSkeleton
         src={src}
         alt={alt}
-        className={`w-full h-full object-cover transition-transform duration-500 ${
+        className={`w-full h-full object-cover transition-transform duration-200 ease-out ${
           isFocused ? 'scale-105 opacity-100' : 'opacity-90 group-hover:scale-105 group-hover:opacity-100'
         }`}
         fallback={fallback || defaultFallback}
@@ -88,7 +88,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
             e.stopPropagation();
             onPlayDirect();
           }}
-          className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center backdrop-blur-[2px] ${
+          className={`absolute inset-0 bg-black/50 transition-opacity flex items-center justify-center ${
             isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
         >
@@ -112,7 +112,7 @@ export const CardMediaArtwork = React.memo(function CardMediaArtwork({
 
       {/* Bottom-Right Custom Badge (e.g. Runtime) */}
       {bottomRightBadge && (
-        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/80 text-zinc-300 border border-white/5 backdrop-blur-md z-10">
+        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-black/90 text-zinc-300 border border-white/10 z-10">
           {bottomRightBadge}
         </span>
       )}

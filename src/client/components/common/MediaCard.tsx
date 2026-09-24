@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 import { CardMediaArtwork } from './CardMediaArtwork.js';
 import { useFocusable } from '../../context/SpatialNavigationContext.js';
@@ -53,14 +52,16 @@ export const MediaCard = React.memo(function MediaCard({
   });
 
   return (
-    <motion.div
+    <div
       ref={focusId ? (focusRef as any) : undefined}
       onClick={onClick}
-      whileHover={isKeyboardNav ? undefined : { y: -4 }}
-      animate={isSpatialFocused ? { y: -4 } : { y: 0 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      className={`group relative flex flex-col flex-shrink-0 cursor-pointer select-none space-y-2 rounded-2xl ${className}`}
+      className={`group relative flex flex-col flex-shrink-0 cursor-pointer select-none space-y-2 rounded-2xl transition-transform duration-150 ease-out active:scale-[0.98] ${
+        isSpatialFocused
+          ? '-translate-y-1'
+          : isKeyboardNav
+          ? ''
+          : 'hover:-translate-y-1'
+      } ${className}`}
     >
       {/* 2:3 Aspect Ratio Artwork Container with Unified Effects */}
       <CardMediaArtwork
@@ -90,7 +91,7 @@ export const MediaCard = React.memo(function MediaCard({
           <span className="truncate">{subtitle || year || (isMovie ? 'Movie' : 'Series')}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 

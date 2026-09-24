@@ -112,6 +112,7 @@ export const Hero3DCarousel = React.memo(function Hero3DCarousel({
                   zIndex: profile.zIndex,
                   transformStyle: 'preserve-3d',
                   pointerEvents: abs > 2 ? 'none' : 'auto',
+                  willChange: 'transform, opacity',
                 }}
                 onClick={() => !isCenter && onActiveIndexChange?.(idx)}
                 className={`absolute w-[84vw] sm:w-[72vw] md:w-[64vw] lg:w-[58vw] max-w-5xl h-full rounded-3xl overflow-hidden border shadow-2xl group ${

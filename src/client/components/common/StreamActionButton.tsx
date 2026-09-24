@@ -44,8 +44,10 @@ export function StreamActionButton({
     }
   };
 
+  const buttonId = focusId || 'detail-stream-action-btn';
+
   const { ref: focusRef, isSpatialFocused } = useFocusable<HTMLElement>({
-    id: focusId || 'detail-stream-action-btn',
+    id: buttonId,
     zone,
     section: 'detail-hero-action',
     autoFocus,
@@ -69,6 +71,7 @@ export function StreamActionButton({
     const isQueued = activeRequest.status === 'queued';
     return (
       <div
+        id={buttonId}
         ref={focusRef}
         tabIndex={-1}
         className={`inline-flex items-center rounded-xl glass-panel bg-zinc-900/80 border border-white/10 text-zinc-300 text-xs font-semibold backdrop-blur-md cursor-default select-none spatial-focus-indicator ${
@@ -90,6 +93,7 @@ export function StreamActionButton({
   if (isReady) {
     return (
       <motion.button
+        id={buttonId}
         ref={focusRef}
         type="button"
         whileHover={{ scale: 1.02 }}
@@ -108,6 +112,7 @@ export function StreamActionButton({
 
   return (
     <motion.button
+      id={buttonId}
       ref={focusRef}
       type="button"
       whileHover={{ scale: isRequesting ? 1 : 1.02 }}

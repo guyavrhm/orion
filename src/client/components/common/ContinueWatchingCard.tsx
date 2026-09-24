@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import type { UserActiveMediaState } from '../../../main/types/index.js';
 import { CardMediaArtwork } from './CardMediaArtwork.js';
 import { useFocusable } from '../../context/SpatialNavigationContext.js';
@@ -53,14 +52,16 @@ export const ContinueWatchingCard = React.memo(function ContinueWatchingCard({
   });
 
   return (
-    <motion.div
+    <div
       ref={focusId ? (focusRef as any) : undefined}
       onClick={onClick}
-      whileHover={isKeyboardNav ? undefined : { y: -4 }}
-      animate={isSpatialFocused ? { y: -4 } : { y: 0 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      className={`group relative flex-shrink-0 cursor-pointer flex flex-col space-y-2 select-none rounded-2xl ${className}`}
+      className={`group relative flex-shrink-0 cursor-pointer flex flex-col space-y-2 select-none rounded-2xl transition-transform duration-150 ease-out active:scale-[0.98] ${
+        isSpatialFocused
+          ? '-translate-y-1'
+          : isKeyboardNav
+          ? ''
+          : 'hover:-translate-y-1'
+      } ${className}`}
     >
       {/* 16:9 Landscape Artwork Container with Unified Effects */}
       <CardMediaArtwork
@@ -95,7 +96,7 @@ export const ContinueWatchingCard = React.memo(function ContinueWatchingCard({
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 

@@ -545,7 +545,7 @@ export function MediaDetailView({
           ? { type: 'spring', damping: 32, stiffness: 350 }
           : { duration: 0.2, ease: 'easeOut' }
       }
-      className={`fixed inset-0 z-40 bg-zinc-950 overflow-y-auto overflow-x-hidden overscroll-contain text-zinc-100 pb-28 will-change-transform ${
+      className={`fixed inset-0 z-40 bg-zinc-950 overflow-y-auto overflow-x-hidden overscroll-contain text-zinc-100 pb-28 ${
         isMobile ? 'shadow-[-20px_0_50px_rgba(0,0,0,0.8)] touch-pan-y' : ''
       }`}
     >

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Tv, PlusCircle, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
 import type { EpisodeMetadata, UserActiveMediaState } from '../../../main/types/index.js';
 import { CardMediaArtwork } from './CardMediaArtwork.js';
 import { useFocusable } from '../../context/SpatialNavigationContext.js';
@@ -52,13 +51,15 @@ export const EpisodeCard = React.memo(function EpisodeCard({
   });
 
   return (
-    <motion.div
+    <div
       ref={focusId ? (focusRef as any) : undefined}
-      whileHover={isKeyboardNav ? undefined : { y: -4 }}
-      animate={isSpatialFocused ? { y: -4 } : { y: 0 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      className={`group relative flex flex-col justify-between space-y-3 rounded-2xl select-none ${className}`}
+      className={`group relative flex flex-col justify-between space-y-3 rounded-2xl select-none transition-transform duration-150 ease-out ${
+        isSpatialFocused
+          ? '-translate-y-1'
+          : isKeyboardNav
+          ? ''
+          : 'hover:-translate-y-1'
+      } active:scale-[0.98] ${className}`}
     >
       {/* Top: 16:9 Landscape Episode Thumbnail */}
       <div
@@ -112,14 +113,13 @@ export const EpisodeCard = React.memo(function EpisodeCard({
 
           {!isReady && (!activeRequest || activeRequest.status === 'ready' || activeRequest.status === 'failed') && (
             <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ scale: isRequesting ? 1 : 1.15 }}
-                whileTap={{ scale: isRequesting ? 1 : 0.9 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 onClick={onRequest}
                 disabled={isRequesting}
-                className={`transition-all cursor-pointer disabled:opacity-50 p-1 rounded-full flex items-center justify-center ${
+                className={`transition-all cursor-pointer disabled:opacity-50 p-1 rounded-full flex items-center justify-center transform active:scale-95 ${
+                  isRequesting ? '' : 'hover:scale-110'
+                } ${
                   isSpatialFocused
                     ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white scale-110'
                     : 'text-zinc-400 hover:text-white hover:bg-white/10'
@@ -132,7 +132,7 @@ export const EpisodeCard = React.memo(function EpisodeCard({
                 ) : (
                   <PlusCircle className="w-4 h-4" />
                 )}
-              </motion.button>
+              </button>
             </div>
           )}
         </div>
@@ -143,7 +143,7 @@ export const EpisodeCard = React.memo(function EpisodeCard({
           </p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 });
 

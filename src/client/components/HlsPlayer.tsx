@@ -147,7 +147,7 @@ function PlayerSubtitlesAudioMenu({
   useScrollActiveIntoView(containerRef, '[data-active="true"]', activeSubtitleLang);
 
   return (
-    <div className="absolute right-0 top-12 w-64 glass-panel bg-zinc-900/95 rounded-2xl shadow-2xl z-40 border border-white/10 overflow-hidden">
+    <div className="absolute right-0 top-12 w-64 bg-zinc-900/98 rounded-2xl shadow-2xl z-40 border border-white/10 overflow-hidden">
       <div ref={containerRef} className="p-2 max-h-72 overflow-y-auto overscroll-contain space-y-3">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5 px-2">Subtitles</div>
@@ -257,12 +257,18 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
     onEnter: onToggleFullscreen,
   });
 
+  const lastTimeRef = useRef<number>(0);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const updateBufferAndTimeline = () => {
+    const updateBufferAndTimeline = (force = false) => {
       const cur = video.currentTime;
+      if (!force && Math.abs(cur - lastTimeRef.current) < 0.5) {
+        return;
+      }
+      lastTimeRef.current = cur;
       const dur = video.duration || 0;
       setCurrentTime(cur);
       setDuration(dur);
@@ -280,7 +286,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
     };
 
     if (showControls) {
-      updateBufferAndTimeline();
+      updateBufferAndTimeline(true);
     }
 
     const onTimeUpdate = () => {
@@ -291,13 +297,13 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
 
     const onProgress = () => {
       if (showControls) {
-        updateBufferAndTimeline();
+        updateBufferAndTimeline(true);
       }
     };
 
     const onMetadata = () => {
       if (showControls) {
-        updateBufferAndTimeline();
+        updateBufferAndTimeline(true);
       }
     };
 
@@ -326,7 +332,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
           step="any"
           value={currentTime}
           onChange={(e) => onSeekTo(parseFloat(e.target.value))}
-          className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all touch-none spatial-focus-indicator ${
+          className={`w-full h-1.5 group-hover:h-2.5 rounded-lg appearance-none cursor-pointer accent-red-600 touch-none spatial-focus-indicator ${
             isTimelineFocused ? 'spatial-focus-active ring-2 ring-white/90' : ''
           }`}
           style={{
@@ -786,7 +792,7 @@ export function HlsPlayer({
   }, [showControls, isPlaying, showSubtitleMenu, showSettingsMenu, resetHideTimer]);
 
   const triggerActivity = useCallback(() => {
-    setShowControls(true);
+    setShowControls((prev) => (prev ? prev : true));
     resetHideTimer();
   }, [resetHideTimer]);
 
@@ -1025,7 +1031,7 @@ export function HlsPlayer({
           seek(-10);
           setShowControls(true);
           triggerActivity();
-          setFocused('player-play-pause-btn', true);
+          setFocused('player-play-pause-btn', false);
           return;
         }
 
@@ -1035,7 +1041,7 @@ export function HlsPlayer({
           seek(10);
           setShowControls(true);
           triggerActivity();
-          setFocused('player-play-pause-btn', true);
+          setFocused('player-play-pause-btn', false);
           return;
         }
 
@@ -1044,7 +1050,7 @@ export function HlsPlayer({
           e.stopPropagation();
           setShowControls(true);
           triggerActivity();
-          setFocused('player-play-pause-btn', true);
+          setFocused('player-play-pause-btn', false);
           return;
         }
       } else {
@@ -1295,7 +1301,7 @@ export function HlsPlayer({
           dir={isRtlText(currentSubtitleText) ? 'rtl' : 'ltr'}
         >
           <span
-            className="inline-block max-w-[88%] md:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/80 backdrop-blur-[2px] shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
+            className="inline-block max-w-[88%] md:max-w-[75%] text-white font-medium px-3.5 py-1.5 rounded-lg bg-black/90 shadow-2xl leading-snug whitespace-pre-line [box-decoration-break:clone]"
             style={{
               fontSize: 'clamp(0.95rem, 3.2vmin, 2rem)',
               lineHeight: 1.35,
@@ -1314,7 +1320,7 @@ export function HlsPlayer({
             toggleFullscreen();
           }
         }}
-        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] md:p-8 transition-opacity duration-300 z-30 ${
+        className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/80 flex flex-col justify-between pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pl-[calc(env(safe-area-inset-left,0px)+1rem)] pr-[calc(env(safe-area-inset-right,0px)+1rem)] md:p-8 transition-opacity duration-300 z-30 transform-gpu ${
           showControls ? 'opacity-100 cursor-pointer' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -1324,7 +1330,7 @@ export function HlsPlayer({
             <button
               ref={backBtnRef}
               onClick={handleClose}
-              className={`p-2.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+              className={`p-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer spatial-focus-indicator ${
                 isBackBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
               }`}
               title="Close Player (Esc)"
@@ -1342,7 +1348,7 @@ export function HlsPlayer({
             <button
               ref={castBtnRef}
               onClick={handleCast}
-              className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+              className={`p-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer spatial-focus-indicator ${
                 isCastBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
               }`}
               title="Cast to Display"
@@ -1361,7 +1367,7 @@ export function HlsPlayer({
                     openSubtitleMenu();
                   }
                 }}
-                className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                className={`p-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer spatial-focus-indicator ${
                   isSubBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
                 }`}
                 title="Subtitles & Audio"
@@ -1398,7 +1404,7 @@ export function HlsPlayer({
                     openSettingsMenu();
                   }
                 }}
-                className={`p-2.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer spatial-focus-indicator ${
+                className={`p-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer spatial-focus-indicator ${
                   isSettingsBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
                 }`}
                 title="Playback Settings"
@@ -1407,7 +1413,7 @@ export function HlsPlayer({
               </button>
 
               {showSettingsMenu && (
-                <div className="absolute right-0 top-12 w-56 glass-panel bg-zinc-900/95 rounded-2xl p-3 shadow-2xl z-40 border border-white/10">
+                <div className="absolute right-0 top-12 w-56 bg-zinc-900/98 rounded-2xl p-3 shadow-2xl z-40 border border-white/10">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Speed</div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[0.5, 0.75, 1, 1.25, 1.5, 2].map((spd, idx) => (
@@ -1439,7 +1445,7 @@ export function HlsPlayer({
           <button
             onClick={() => seek(-10)}
             tabIndex={-1}
-            className="p-3.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer active:scale-95"
+            className="p-3.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer active:scale-95"
             title="Skip back 10s (← / J)"
           >
             <RotateCcw className="w-7 h-7" />
@@ -1459,7 +1465,7 @@ export function HlsPlayer({
           <button
             onClick={() => seek(10)}
             tabIndex={-1}
-            className="p-3.5 rounded-full bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white transition backdrop-blur-md cursor-pointer active:scale-95"
+            className="p-3.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer active:scale-95"
             title="Skip forward 10s (→ / L)"
           >
             <RotateCw className="w-7 h-7" />

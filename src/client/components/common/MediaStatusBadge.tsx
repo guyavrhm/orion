@@ -22,7 +22,7 @@ export const MediaStatusBadge = React.memo(function MediaStatusBadge({
   if (isQueued) {
     return (
       <div
-        className={`p-1 rounded-full glass-panel bg-black/70 border border-white/15 text-amber-400 shadow-md flex items-center justify-center backdrop-blur-md ${className}`}
+        className={`p-1 rounded-full bg-black/90 border border-white/15 text-amber-400 shadow-md flex items-center justify-center ${className}`}
         title="Queued"
         aria-label="Queued"
       >
@@ -34,7 +34,7 @@ export const MediaStatusBadge = React.memo(function MediaStatusBadge({
   if (isPreparing) {
     return (
       <div
-        className={`px-2 py-0.5 rounded-full glass-panel bg-black/80 border border-white/15 text-white shadow-md flex items-center gap-1 backdrop-blur-md ${className}`}
+        className={`px-2 py-0.5 rounded-full bg-black/90 border border-white/15 text-white shadow-md flex items-center gap-1 ${className}`}
         title={`Preparing (${Math.round(parseFloat(activeRequest.progress || '0'))}%)`}
         aria-label={`Preparing ${Math.round(parseFloat(activeRequest.progress || '0'))}%`}
       >
