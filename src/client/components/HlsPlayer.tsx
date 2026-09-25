@@ -10,7 +10,6 @@ import {
   Subtitles,
   Settings,
   ArrowLeft,
-  Cast,
   Check,
   AlertCircle,
   SkipForward,
@@ -967,37 +966,6 @@ export function HlsPlayer({
     }
   }, []);
 
-  const handleCast = async () => {
-    const video = videoRef.current as any;
-    if (!video) return;
-
-    // 1. Apple AirPlay (Safari iOS / macOS)
-    if (typeof video.webkitShowPlaybackTargetPicker === 'function') {
-      video.webkitShowPlaybackTargetPicker();
-      return;
-    }
-
-    // 2. Standard Remote Playback API (Chrome / Android / modern browsers)
-    if (video.remote && typeof video.remote.prompt === 'function') {
-      try {
-        await video.remote.prompt();
-      } catch {
-        // Picker dismissed or unsupported
-      }
-      return;
-    }
-
-    // 3. Fallback: Presentation API
-    if (typeof window !== 'undefined' && 'PresentationRequest' in window) {
-      try {
-        const request = new (window as any).PresentationRequest([window.location.href]);
-        await request.start();
-      } catch {
-        // Picker dismissed or unsupported
-      }
-    }
-  };
-
   // 10. MediaSession Hook
   useMediaSession({
     media,
@@ -1016,19 +984,11 @@ export function HlsPlayer({
     onEnter: handleClose,
   });
 
-  const { ref: castBtnRef, isSpatialFocused: isCastBtnFocused } = useFocusable<HTMLButtonElement>({
-    id: 'player-cast-btn',
-    zone: 'player',
-    section: 'player-top',
-    index: 1,
-    onEnter: handleCast,
-  });
-
   const { ref: subBtnRef, isSpatialFocused: isSubBtnFocused } = useFocusable<HTMLButtonElement>({
     id: 'player-subtitles-btn',
     zone: 'player',
     section: 'player-top',
-    index: 2,
+    index: 1,
     onEnter: () => {
       if (showSubtitleMenu) {
         handleDismissSubtitleMenu();
@@ -1042,7 +1002,7 @@ export function HlsPlayer({
     id: 'player-settings-btn',
     zone: 'player',
     section: 'player-top',
-    index: 3,
+    index: 2,
     onEnter: () => {
       if (showSettingsMenu) {
         handleDismissSettingsMenu();
@@ -1584,18 +1544,6 @@ export function HlsPlayer({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Cast to Display Button */}
-            <button
-              ref={castBtnRef}
-              onClick={handleCast}
-              className={`p-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer spatial-focus-indicator ${
-                isCastBtnFocused ? 'spatial-focus-pill ring-2 ring-white/90 bg-white/20 text-white' : ''
-              }`}
-              title="Cast to Display"
-            >
-              <Cast className="w-5 h-5" />
-            </button>
-
             {/* Subtitles Menu Trigger */}
             <div className="relative">
               <button
