@@ -1487,6 +1487,8 @@ export function HlsPlayer({
         }}
         onWaiting={() => setLoading(true)}
         onPlaying={() => setLoading(false)}
+        onCanPlay={() => setLoading(false)}
+        onSeeked={() => setLoading(false)}
         onClick={handleBackdropAction}
         onDoubleClick={() => {
           if (!isTouchInteractionRef.current) {
