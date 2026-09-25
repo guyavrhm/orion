@@ -239,24 +239,72 @@ export function MediaDetailView({
     };
   }, [isMobile, isActive, onBack, dragX]);
 
+  // Track entrance transition to prevent mid-animation layout thrash and frame drops
+  const isTransitionCompleteRef = useRef<boolean>(isCached);
+  const pendingDataRef = useRef<{
+    metadata?: MovieMetadata | ShowMetadata;
+    progress?: Record<string, Progress>;
+    ready?: Record<string, Stream>;
+  } | null>(null);
+
+  const commitDetails = useCallback(
+    (data: {
+      metadata?: MovieMetadata | ShowMetadata;
+      progress?: Record<string, Progress>;
+      ready?: Record<string, Stream>;
+    }) => {
+      if (data.metadata) {
+        setDetailedMedia(data.metadata);
+        onCacheMediaDetails?.(data.metadata);
+      }
+      if (data.progress) onUpdateProgressMap?.(data.progress);
+      if (data.ready) onUpdateReadyMap?.(data.ready);
+      setIsFetchCompleted(true);
+      pendingDataRef.current = null;
+    },
+    [onCacheMediaDetails, onUpdateProgressMap, onUpdateReadyMap]
+  );
+
+  const handleAnimationComplete = useCallback(() => {
+    isTransitionCompleteRef.current = true;
+    if (pendingDataRef.current) {
+      commitDetails(pendingDataRef.current);
+    }
+  }, [commitDetails]);
+
+  // Safety fallback: if onAnimationComplete doesn't fire within 350ms, mark transition complete
+  useEffect(() => {
+    if (isCached) return;
+    const timer = setTimeout(() => {
+      if (!isTransitionCompleteRef.current) {
+        handleAnimationComplete();
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [isCached, handleAnimationComplete]);
 
   useEffect(() => {
     setDetailedMedia(media);
     setIsFetchCompleted(isCached);
+    isTransitionCompleteRef.current = isCached;
+    pendingDataRef.current = null;
 
     if (media.type === 'movie') {
       if (!isCached && !media.description && !media.cast?.length) {
         ApiClient.getMovieDetails(media.id)
           .then((res) => {
-            if (res.metadata) {
-              setDetailedMedia(res.metadata as MovieMetadata);
-              onCacheMediaDetails?.(res.metadata);
+            if (!isTransitionCompleteRef.current) {
+              pendingDataRef.current = res;
+            } else {
+              commitDetails(res);
             }
-            if (res.progress) onUpdateProgressMap?.(res.progress);
-            if (res.ready) onUpdateReadyMap?.(res.ready);
           })
           .catch(() => {})
-          .finally(() => setIsFetchCompleted(true));
+          .finally(() => {
+            if (isTransitionCompleteRef.current) {
+              setIsFetchCompleted(true);
+            }
+          });
       } else {
         setIsFetchCompleted(true);
       }
@@ -264,20 +312,23 @@ export function MediaDetailView({
       if (!isCached) {
         ApiClient.getShowDetails(media.id)
           .then((res) => {
-            if (res.metadata) {
-              setDetailedMedia(res.metadata as ShowMetadata);
-              onCacheMediaDetails?.(res.metadata);
+            if (!isTransitionCompleteRef.current) {
+              pendingDataRef.current = res;
+            } else {
+              commitDetails(res);
             }
-            if (res.progress) onUpdateProgressMap?.(res.progress);
-            if (res.ready) onUpdateReadyMap?.(res.ready);
           })
           .catch(() => {})
-          .finally(() => setIsFetchCompleted(true));
+          .finally(() => {
+            if (isTransitionCompleteRef.current) {
+              setIsFetchCompleted(true);
+            }
+          });
       } else {
         setIsFetchCompleted(true);
       }
     }
-  }, [media.id]);
+  }, [media.id, isCached, commitDetails]);
 
   const current = detailedMedia || media;
   const isMovie = current.type === 'movie';
@@ -542,6 +593,7 @@ export function MediaDetailView({
           ? { type: 'spring', damping: 32, stiffness: 350 }
           : { duration: 0.2, ease: 'easeOut' }
       }
+      onAnimationComplete={handleAnimationComplete}
       className={`fixed inset-0 z-40 bg-zinc-950 overflow-y-auto overflow-x-hidden overscroll-contain text-zinc-100 pb-28 ${
         isMobile ? 'shadow-[-20px_0_50px_rgba(0,0,0,0.8)] touch-pan-y' : ''
       }`}
