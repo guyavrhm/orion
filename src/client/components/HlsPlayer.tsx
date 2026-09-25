@@ -989,6 +989,7 @@ export function HlsPlayer({
     zone: 'player',
     section: 'player-top',
     index: 1,
+    priority: 10,
     onEnter: () => {
       if (showSubtitleMenu) {
         handleDismissSubtitleMenu();

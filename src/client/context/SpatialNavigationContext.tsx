@@ -16,6 +16,7 @@ export interface SectionConfig {
   id: string;
   type?: SectionLayoutType;
   columns?: number;
+  rememberFocus?: boolean;
 }
 
 export interface FocusableNode {
@@ -80,10 +81,10 @@ export const DEFAULT_ZONE_SECTIONS: Record<string, SectionConfig[]> = {
     { id: 'search-results', type: 'list' },
   ],
   player: [
-    { id: 'player-top', type: 'row' },
-    { id: 'player-middle', type: 'row' },
-    { id: 'player-timeline', type: 'row' },
-    { id: 'player-bottom', type: 'row' },
+    { id: 'player-top', type: 'row', rememberFocus: true },
+    { id: 'player-middle', type: 'row', rememberFocus: true },
+    { id: 'player-timeline', type: 'row', rememberFocus: true },
+    { id: 'player-bottom', type: 'row', rememberFocus: true },
   ],
   'season-menu': [
     { id: 'dropdown-items', type: 'list' },
@@ -465,6 +466,10 @@ export function SpatialNavigationProvider({
       zone === 'player-menu'
     ) {
       zoneFocusMemoryRef.current.delete(zone);
+      const sections = zoneSectionsRef.current.get(zone);
+      if (sections) {
+        sections.forEach((sec) => sectionFocusMemoryRef.current.delete(sec.id));
+      }
     }
     pendingFocusIdRef.current = null;
 
@@ -691,16 +696,38 @@ export function SpatialNavigationProvider({
                   }
                 }
 
-                // If target section has a single element (e.g. hero card, action button), select it immediately
+                // 1. Declarative Section Focus Memory:
+                // If section config specifies rememberFocus (or player zone sections), restore remembered child
+                const shouldRememberFocus = candidateSec.rememberFocus ?? (currentZone === 'player' || candidateSec.id.startsWith('player-'));
+                if (shouldRememberFocus) {
+                  const rememberedId = sectionFocusMemoryRef.current.get(candidateSec.id);
+                  if (rememberedId) {
+                    const rememberedNode = candidateNodes.find((n) => n.id === rememberedId && !n.disabled);
+                    if (rememberedNode) {
+                      setFocused(rememberedNode.id, true);
+                      return;
+                    }
+                  }
+                }
+
+                // 2. Single element in section -> select it immediately
                 if (candidateNodes.length === 1) {
                   setFocused(candidateNodes[0].id, true);
                   return;
                 }
 
-                // If moving into a section with a high-priority active item (e.g. active season tab), focus it
+                // 3. Priority / Designated Default Item:
+                // If section has an item declaring priority > 0 (e.g. Subtitles in player-top, active season tab), focus it
                 const priorityNode = candidateNodes.find((n) => (n.priority ?? 0) > 0);
                 if (priorityNode) {
                   setFocused(priorityNode.id, true);
+                  return;
+                }
+
+                // 4. Non-aligned sections with rememberFocus default to leftmost item (candidateNodes[0])
+                // E.g. player-bottom defaults to leftmost button (Next Episode if present, or Fullscreen)
+                if (shouldRememberFocus && candidateSec.type === 'row') {
+                  setFocused(candidateNodes[0].id, true);
                   return;
                 }
 

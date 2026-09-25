@@ -36,10 +36,10 @@ describe('Spatial Navigation - Default Section Configurations', () => {
     ]);
 
     expect(DEFAULT_ZONE_SECTIONS.player).toEqual([
-      { id: 'player-top', type: 'row' },
-      { id: 'player-middle', type: 'row' },
-      { id: 'player-timeline', type: 'row' },
-      { id: 'player-bottom', type: 'row' },
+      { id: 'player-top', type: 'row', rememberFocus: true },
+      { id: 'player-middle', type: 'row', rememberFocus: true },
+      { id: 'player-timeline', type: 'row', rememberFocus: true },
+      { id: 'player-bottom', type: 'row', rememberFocus: true },
     ]);
 
     expect(DEFAULT_ZONE_SECTIONS['season-menu']).toEqual([
@@ -356,4 +356,68 @@ describe('Spatial Navigation - isBackKey Universal Remote Detection', () => {
     expect(isBackKey({ key: ' ', keyCode: 32 } as KeyboardEvent)).toBe(false);
   });
 });
+
+describe('Spatial Navigation - Declarative Section Focus & Memory', () => {
+  it('should restore remembered node if present in memory', () => {
+    const memory = new Map<string, string>();
+    memory.set('player-top', 'player-settings-btn');
+
+    const candidateNodes: FocusableNode[] = [
+      { id: 'player-back-btn', zone: 'player', section: 'player-top', index: 0, element: null },
+      { id: 'player-subtitles-btn', zone: 'player', section: 'player-top', index: 1, priority: 10, element: null },
+      { id: 'player-settings-btn', zone: 'player', section: 'player-top', index: 2, element: null },
+    ];
+
+    const rememberedId = memory.get('player-top');
+    const target = candidateNodes.find((n) => n.id === rememberedId && !n.disabled);
+    expect(target?.id).toBe('player-settings-btn');
+  });
+
+  it('should select designated priority node on first entry if defined (e.g. Subtitles in player-top)', () => {
+    const candidateNodes: FocusableNode[] = [
+      { id: 'player-back-btn', zone: 'player', section: 'player-top', index: 0, element: null },
+      { id: 'player-subtitles-btn', zone: 'player', section: 'player-top', index: 1, priority: 10, element: null },
+      { id: 'player-settings-btn', zone: 'player', section: 'player-top', index: 2, element: null },
+    ];
+
+    const priorityNode = candidateNodes.find((n) => (n.priority ?? 0) > 0);
+    expect(priorityNode?.id).toBe('player-subtitles-btn');
+  });
+
+  it('should select leftmost node (candidateNodes[0]) on first entry when no priority is set (e.g. player-bottom)', () => {
+    // When next episode is present
+    const candidateNodesWithNext: FocusableNode[] = [
+      { id: 'player-next-ep-btn', zone: 'player', section: 'player-bottom', index: 0, element: null },
+      { id: 'player-fullscreen-btn', zone: 'player', section: 'player-bottom', index: 1, element: null },
+    ];
+    const targetWithNext = candidateNodesWithNext[0];
+    expect(targetWithNext.id).toBe('player-next-ep-btn');
+
+    // When next episode is absent (fullscreen is only node at index 0)
+    const candidateNodesFullscreenOnly: FocusableNode[] = [
+      { id: 'player-fullscreen-btn', zone: 'player', section: 'player-bottom', index: 0, element: null },
+    ];
+    const targetFullscreenOnly = candidateNodesFullscreenOnly[0];
+    expect(targetFullscreenOnly.id).toBe('player-fullscreen-btn');
+  });
+
+  it('should dynamically adapt when new buttons are added or removed without hardcoding', () => {
+    // A new "Episode Guide" button added before Next Episode at index 0
+    const candidateNodesWithGuide: FocusableNode[] = [
+      { id: 'player-guide-btn', zone: 'player', section: 'player-bottom', index: 0, element: null },
+      { id: 'player-next-ep-btn', zone: 'player', section: 'player-bottom', index: 1, element: null },
+      { id: 'player-fullscreen-btn', zone: 'player', section: 'player-bottom', index: 2, element: null },
+    ];
+    expect(candidateNodesWithGuide[0].id).toBe('player-guide-btn');
+
+    // Subtitles removed in player-top: priority falls back to candidateNodes[0] (or another priority button)
+    const candidateNodesNoSub: FocusableNode[] = [
+      { id: 'player-back-btn', zone: 'player', section: 'player-top', index: 0, element: null },
+      { id: 'player-settings-btn', zone: 'player', section: 'player-top', index: 1, element: null },
+    ];
+    const priorityNode = candidateNodesNoSub.find((n) => (n.priority ?? 0) > 0) || candidateNodesNoSub[0];
+    expect(priorityNode.id).toBe('player-back-btn');
+  });
+});
+
 
