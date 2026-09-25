@@ -1470,7 +1470,7 @@ export function HlsPlayer({
       {loading && !error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none z-20">
           <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="mt-4 text-sm font-medium tracking-wide text-zinc-300">Buffering...</span>
+          <span className="mt-4 text-sm font-medium tracking-wide text-zinc-300">Loading...</span>
         </div>
       )}
 
