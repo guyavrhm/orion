@@ -6,7 +6,7 @@
 
 *Simple, Reliable, Universal*
 
-<img src="https://github.com/user-attachments/assets/d01f920b-c06b-4765-8913-b00460b8567c" alt="Orion Interface Preview" width="720">
+<img src="https://github.com/user-attachments/assets/63020277-deea-42f4-af68-c069918c2d41" alt="Orion Interface Preview" width="920">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
