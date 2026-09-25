@@ -269,6 +269,12 @@ function AppContent() {
       : null;
   }, [playingMedia, selectedMedia, shows]);
 
+  // Stable initial timestamp for HlsPlayer: captured once per playingMedia fileId to prevent player re-renders on progress saves
+  const playerInitialTimestamp = useMemo(() => {
+    if (!playingMedia) return 0;
+    return progressMap[playingMedia.fileId]?.timestamp || 0;
+  }, [playingMedia?.fileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleNextEpisode = useCallback(() => {
     if (!playingMedia || !nextEpisodeMeta) return;
 
@@ -476,7 +482,7 @@ function AppContent() {
             <HlsPlayer
               key={playingMedia.fileId}
               media={playingMedia}
-              initialTimestamp={progressMap[playingMedia.fileId]?.timestamp || 0}
+              initialTimestamp={playerInitialTimestamp}
               onClose={() => {
                 popZone('player');
                 setPlayingMedia(null);

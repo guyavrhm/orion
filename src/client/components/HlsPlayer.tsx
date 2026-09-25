@@ -907,9 +907,8 @@ export function HlsPlayer({
     if (!video) return;
     video.pause();
     setIsPlaying(false);
-    flushProgress();
     triggerActivity();
-  }, [flushProgress, triggerActivity]);
+  }, [triggerActivity]);
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
@@ -1527,10 +1526,10 @@ export function HlsPlayer({
       {/* Custom Subtitles Overlay */}
       {currentSubtitleText && !error && (
         <div
-          className={`absolute left-4 right-4 flex justify-center pointer-events-none z-20 text-center transition-all duration-300 ease-out ${
+          className={`absolute left-4 right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:bottom-12 flex justify-center pointer-events-none z-20 text-center transition-transform duration-300 ease-out will-change-transform ${
             showControls
-              ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.25rem)] md:bottom-32'
-              : 'bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] md:bottom-12'
+              ? '-translate-y-[3.75rem] md:-translate-y-20'
+              : 'translate-y-0'
           }`}
           dir={isRtlText(currentSubtitleText) ? 'rtl' : 'ltr'}
         >
