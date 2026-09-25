@@ -51,13 +51,16 @@ orion/
 │   │   ├── config/              # Environment config & constants
 │   │   ├── sse/                 # Server-Sent Events relay
 │   │   └── utils/               # Shared utilities
-│   └── renderer/                # Frontend (Vanilla JS PWA)
-│       ├── App.js               # SPA entry point & router
-│       ├── state/               # Reactive store (Store.js)
-│       ├── views/               # Page views
-│       ├── components/          # Reusable UI components
-│       ├── services/            # API client & SSE service
-│       └── utils/               # Frontend utilities
+│   └── client/                  # Frontend (React 19 + TypeScript PWA)
+│       ├── App.tsx              # Root component & state orchestrator
+│       ├── main.tsx             # React entry point & PWA registration
+│       ├── context/             # Spatial navigation & shared React contexts
+│       ├── views/               # View screens & skeletons
+│       ├── components/          # Reusable UI components & HLS player
+│       ├── hooks/               # Custom hooks (SSE, MediaSession, etc.)
+│       ├── services/            # API client
+│       ├── types/               # Frontend UI types
+│       └── utils/               # Client utilities (formatting, subtitles)
 ├── architecture.md              # Full system architecture documentation
 ├── tests/                       # Automated Vitest test suite
 │   ├── unit/                    # Unit tests (db, workers, codec, clients, frontend)
@@ -127,7 +130,7 @@ npm run dev
 npm run typecheck
 ```
 
-This runs `tsc -p tsconfig.server.json --noEmit` in strict mode to ensure backend code is type-safe.
+This runs `tsc --noEmit` (for the React client) and `tsc -p tsconfig.server.json --noEmit` (for the backend) in strict mode to ensure the entire codebase is type-safe.
 
 ---
 
@@ -143,17 +146,18 @@ This runs `tsc -p tsconfig.server.json --noEmit` in strict mode to ensure backen
 - **SQLite concurrency**: the database runs in WAL mode for multi-process safety. Use the existing repository pattern in `src/main/db/` for database operations.
 - **Worker isolation**: workers are designed to be stateless and idempotent. All inter-process communication goes through Redis (BullMQ jobs or Pub/Sub events).
 
-### Frontend (Vanilla JS)
+### Frontend (React & TypeScript)
 
-- **No frameworks currently**: the frontend is vanilla JavaScript by design. Introducing a framework (React, Vue, etc.) would require a complete rewrite of `src/renderer/`.
-- **Normalized store pattern**: all state flows through `Store.js`. Metadata, progress, and downloads are kept in separate normalized caches. Don't duplicate data across caches.
-- **SSE-driven updates**: real-time UI updates come from the `/events` SSE stream. Don't poll the API for status changes.
+- **Modern React 19 & TypeScript**: The frontend uses React 19 functional components, strict TypeScript, Tailwind CSS v4, and Motion.
+- **Spatial Navigation**: Ensure all interactive elements participate cleanly in the spatial navigation system via `useSpatialNavigation` or registered navigational zones for keyboard and remote control compatibility.
+- **SSE-driven updates**: Real-time media progress and stream availability updates come from the `/events` SSE stream (via `useSSE`). Avoid polling the API for status changes.
+- **Normalized state & cache**: Root state is orchestrated in `App.tsx`, maintaining normalized progress and ready maps alongside in-memory detail caches (`mediaDetailsCacheRef`).
 
 ### General
 
 - **Preserve existing comments and docstrings** unless they are directly affected by your change.
 - **Keep commits focused**: one logical change per commit. Separate refactors from feature work.
-- **Automated Tests**: Orion has a comprehensive Vitest test suite covering database repositories, worker pipelines, FFmpeg/codec inspection, external API clients, REST API endpoints, and the frontend store. Please run `npm test` before submitting changes.
+- **Automated Tests**: Orion has a comprehensive Vitest test suite covering database repositories, worker pipelines, FFmpeg/codec inspection, external API clients, REST API endpoints, and frontend client utilities. Please run `npm test` before submitting changes.
 
 ---
 

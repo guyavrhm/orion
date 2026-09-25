@@ -47,7 +47,7 @@ graph TD
 
 ### Core Components
 
-1. **Frontend PWA (`src/renderer/`):** Vanilla JS SPA built with Vite. Uses `Hls.js` for playback, a centralized reactive store (`Store.js`) with normalized domain caches, and SSE (`/events`) for real-time backend sync.
+1. **Frontend PWA (`src/client/`):** Modern React 19 + TypeScript SPA built with Vite and Tailwind CSS v4. Features Motion for fluid transitions, a TV-grade spatial navigation engine, custom `Hls.js` player with subtitle and audio synchronization, and real-time backend synchronization via Server-Sent Events (`/events`).
 
 2. **Stateless API Server (`src/main/server.ts`)**: Express server that serves the PWA, exposes REST endpoints (`routes/api.ts`) and HLS stream routes (`routes/stream.ts`), proxies external metadata APIs, and enqueues jobs into BullMQ. Checks Redis `orion:active_media:<fileId>` for O(1) duplicate prevention before enqueuing. Subscribes to Redis Pub/Sub (`orion:events`) and relays events to connected SSE clients.
 
@@ -298,21 +298,10 @@ erDiagram
 ### LRU Storage Eviction
 When a new download would exceed the storage cap (default 100 GB, configurable via `MAX_STORAGE_GB`), the `EvictionManager` evicts media in LRU order by `last_updated` watch timestamp (falling back to `downloadTime` for unwatched items), deleting HLS directories + subtitles from disk and purging DB entries. Broadcasts `REMOVED` status over SSE.
 
-### Client-Side Store (`Store.js`)
-Centralized reactive pub-sub store with normalized caches:
+### Client-Side Architecture & State Management
+The frontend (`src/client/`) is built with React 19 and TypeScript, using declarative component state and dedicated hooks rather than an external store library:
 
-```javascript
-this.state = {
-  currentPage: 'movies',
-  metadata: {},                 // Indexed by IMDb ID (_isFull flag prevents redundant fetches)
-  progress: {},                 // Keyed by movieId or episodeId
-  ready: {},                    // Keyed by movieId or episodeId
-  activeMediaRequests: {},      // Maps fileId -> { fileId, status, progress }
-  popularMovies: null,          // string[] of IMDb IDs
-  popularShows: null,           // string[] of IMDb IDs
-  continueWatchingMovies: null, // Array of { id, last_updated }
-  continueWatchingShows: null,  // Array of { id, episodeId, last_updated }
-};
-```
-
-Metadata, progress, and ready states are kept in separate caches. The UI stitches them together at render time.
+* **Central State Orchestration (`App.tsx`)**: Manages root catalog state (`movies`, `shows`, `spotlightItems`, `continueWatching`), active modal views, and normalized lookup records (`progressMap` keyed by `fileId`, `readyMap` keyed by `fileId`).
+* **In-Memory Caches**: Resolved detailed metadata objects (`mediaDetailsCacheRef`) avoid redundant detail API calls and prevent layout jank during animated view transitions.
+* **Real-Time Sync (`useSSE`)**: Connects to the `/events` Server-Sent Events endpoint, automatically tracks active download/transcode job progress (`activeRequests`), updates stream readiness maps, and dispatches background cache revalidations on job completion or eviction.
+* **10-Foot Spatial Navigation (`SpatialNavigationContext.tsx`)**: Provides hierarchical zone-based spatial navigation with directional D-pad/keyboard handling, directional priority overrides, and cross-view focus restoration.

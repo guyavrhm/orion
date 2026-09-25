@@ -17,14 +17,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/main/**/*.ts', 'src/renderer/**/*.js'],
+      include: ['src/main/**/*.ts', 'src/client/**/*.{ts,tsx}'],
       exclude: ['src/main/types/**', 'dist/**', 'node_modules/**']
     }
   },
   resolve: {
     alias: {
       '@main': path.resolve(__dirname, './src/main'),
-      '@renderer': path.resolve(__dirname, './src/renderer')
+      '@client': path.resolve(__dirname, './src/client'),
+      '@': path.resolve(__dirname, './src/client')
     }
   }
 });
