@@ -294,7 +294,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLInputElement>) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || !duration) return;
 
       const video = videoRef.current;
       wasPlayingBeforeScrubRef.current = video ? !video.paused : false;
@@ -304,9 +304,13 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
 
       isScrubbingRef.current = true;
       setIsScrubbing(true);
-      const val = parseFloat((e.target as HTMLInputElement).value);
-      setScrubTime(val);
-      scrubTimeRef.current = val;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const targetTime = ratio * duration;
+
+      setScrubTime(targetTime);
+      scrubTimeRef.current = targetTime;
 
       const handleGlobalPointerUp = () => {
         window.removeEventListener('pointerup', handleGlobalPointerUp);
@@ -317,7 +321,7 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
       window.addEventListener('pointerup', handleGlobalPointerUp);
       window.addEventListener('pointercancel', handleGlobalPointerUp);
     },
-    [videoRef, commitScrub]
+    [videoRef, duration, commitScrub]
   );
 
   const handleSliderChange = useCallback(
@@ -400,7 +404,10 @@ const PlayerBottomBar = React.memo(function PlayerBottomBar({
   return (
     <div className="space-y-3">
       {/* Seek Progress Bar */}
-      <div className="group relative w-full h-6 flex items-center cursor-pointer touch-none">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="group relative w-full h-6 flex items-center cursor-pointer touch-none"
+      >
         <input
           ref={timelineRef}
           type="range"
