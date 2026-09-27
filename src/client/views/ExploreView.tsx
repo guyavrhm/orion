@@ -113,7 +113,7 @@ interface ExploreViewProps {
   readyMap: Record<string, Stream>;
   activeRequests: Record<string, UserActiveMediaState>;
   onSelectMedia: (media: MovieMetadata | ShowMetadata) => void;
-  onPlayDirect: (info: PlayingMediaInfo) => void;
+  onPlayDirect?: (info: PlayingMediaInfo) => void;
 }
 
 export const ExploreView = React.memo(function ExploreView({
@@ -127,7 +127,6 @@ export const ExploreView = React.memo(function ExploreView({
   readyMap,
   activeRequests,
   onSelectMedia,
-  onPlayDirect,
 }: ExploreViewProps) {
   // Curate 5 spotlight titles (use persistent spotlight items from props, or compute fallback)
   const spotlightList = useMemo(() => {
@@ -209,33 +208,7 @@ export const ExploreView = React.memo(function ExploreView({
                   progressPercent={percent}
                   isReady={isReady}
                   activeRequest={activeRequest}
-                  onClick={() => {
-                    if (isReady) {
-                      onPlayDirect({
-                        fileId: item.id,
-                        mediaId: item.id,
-                        title: item.title,
-                        type: 'movie',
-                        poster: item.poster,
-                        background: item.background,
-                      });
-                    } else {
-                      onSelectMedia(item);
-                    }
-                  }}
-                  onPlayDirect={
-                    isReady
-                      ? () =>
-                          onPlayDirect({
-                            fileId: item.id,
-                            mediaId: item.id,
-                            title: item.title,
-                            type: 'movie',
-                            poster: item.poster,
-                            background: item.background,
-                          })
-                      : undefined
-                  }
+                  onClick={() => onSelectMedia(item)}
                 />
               );
             }
@@ -283,7 +256,6 @@ export const ExploreView = React.memo(function ExploreView({
         >
           {movies.map((m, idx) => {
             const isReady = isMediaReady(m);
-            const percent = calculateProgressPercent(progressMap[m.id]);
 
             return (
               <MediaCard
@@ -298,7 +270,6 @@ export const ExploreView = React.memo(function ExploreView({
                 type={m.type}
                 year={m.year}
                 isReady={isReady}
-                progressPercent={percent}
                 onClick={() => onSelectMedia(m)}
               />
             );
