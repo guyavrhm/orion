@@ -32,6 +32,11 @@
     -webkit-touch-callout: none;
   }
 
+  *:focus,
+  *:focus-visible {
+    outline: none;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: #09090b;
