@@ -50,6 +50,7 @@ export function StreamActionButton({
     id: buttonId,
     zone,
     section: 'detail-hero-action',
+    index: 0,
     autoFocus,
     priority: 100,
     onEnter: handleAction,

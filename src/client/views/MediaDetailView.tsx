@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Film, Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2 } from 'lucide-react';
+import { Film, Tv, Play, Check, Star, ChevronDown, PlusCircle, Loader2, ListVideo } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import type {
   MovieMetadata,
@@ -54,7 +54,7 @@ export function MediaDetailView({
   onShowNavContextChange,
   onDragProgress,
 }: MediaDetailViewProps) {
-  const { pushZone, popZone, activeZone, setFocused } = useSpatialNavigation();
+  const { pushZone, popZone, activeZone, setFocused, isKeyboardNav } = useSpatialNavigation();
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [detailedMedia, setDetailedMedia] = useState<MovieMetadata | ShowMetadata>(media);
   const [userSelectedSeason, setUserSelectedSeason] = useState<number | null>(null);
@@ -62,6 +62,7 @@ export function MediaDetailView({
   const [useDropdown, setUseDropdown] = useState(false);
   const [isFetchCompleted, setIsFetchCompleted] = useState<boolean>(isCached);
   const [isPastSeasonPicker, setIsPastSeasonPicker] = useState<boolean>(false);
+  const pendingScrollEpisodeIdRef = useRef<string | null>(null);
 
   const handleDismissSeasonDropdown = useCallback(() => {
     popZone('season-menu');
@@ -102,6 +103,7 @@ export function MediaDetailView({
     setShowSeasonDropdown(false);
     setRequestingId(null);
     setIsPastSeasonPicker(false);
+    pendingScrollEpisodeIdRef.current = null;
     pushZone('detail', 'detail-stream-action-btn');
   }, [media.id, pushZone]);
 
@@ -420,7 +422,29 @@ export function MediaDetailView({
   // Target episode resolution for top ActionButton and active season
   const globalTarget = getShowTargetEpisode(current.id, episodes, progressMap);
   const activeSeason = userSelectedSeason ?? globalTarget.season;
-  const currentSeasonEpisodes = episodes.filter((e) => e.season === activeSeason);
+  const currentSeasonEpisodes = useMemo(
+    () => episodes.filter((e) => e.season === activeSeason),
+    [episodes, activeSeason]
+  );
+
+  const focusAndScrollElement = useCallback((element: HTMLElement, id: string) => {
+    setFocused(id, true);
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [isKeyboardNav, setFocused]);
+
+  // Declarative scroll and focus target episode after season switch / episode render
+  useEffect(() => {
+    if (!pendingScrollEpisodeIdRef.current) return;
+    const targetId = pendingScrollEpisodeIdRef.current;
+    const epEl = document.getElementById(targetId);
+    if (epEl) {
+      pendingScrollEpisodeIdRef.current = null;
+      focusAndScrollElement(epEl, targetId);
+    } else if (isFetchCompleted && currentSeasonEpisodes.length > 0) {
+      // Current season rendered; if target isn't found, avoid dangling ref
+      pendingScrollEpisodeIdRef.current = null;
+    }
+  }, [currentSeasonEpisodes, isFetchCompleted, focusAndScrollElement]);
 
   // Native high-performance IntersectionObserver with dynamic navbar bottom measurement
   useEffect(() => {
@@ -520,6 +544,25 @@ export function MediaDetailView({
   const isTargetEpReady = !isMovie && (!!readyMap[targetEpFileId] || activeRequests[targetEpFileId]?.status === 'ready');
   const targetEpReq = activeRequests[targetEpFileId];
   const targetEpProg = progressMap[targetEpFileId];
+
+  const handleScrollToActiveEpisode = useCallback(() => {
+    if (!targetEpMeta) return;
+
+    const targetFocusId = `detail-ep-${targetEpMeta.id || `${targetEpMeta.season}_${targetEpMeta.episode}`}`;
+    setShowSeasonDropdown(false);
+
+    const immediateEl = document.getElementById(targetFocusId);
+    if (immediateEl && (userSelectedSeason === null || userSelectedSeason === activeSeasonNum)) {
+      pendingScrollEpisodeIdRef.current = null;
+      focusAndScrollElement(immediateEl, targetFocusId);
+      return;
+    }
+
+    pendingScrollEpisodeIdRef.current = targetFocusId;
+    if (userSelectedSeason !== activeSeasonNum) {
+      setUserSelectedSeason(activeSeasonNum);
+    }
+  }, [targetEpMeta, userSelectedSeason, activeSeasonNum, focusAndScrollElement]);
 
   // Helper renderer for primary StreamActionButton
   const renderActionButton = (size: 'md' | 'lg' = 'lg', className = '') => {
@@ -649,8 +692,17 @@ export function MediaDetailView({
       <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-8 mt-4">
         {/* Primary Play / Request Action Area */}
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
-          <div className="w-full sm:w-auto">
-            {renderActionButton('lg', 'w-full sm:w-auto justify-center')}
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className={isMovie ? 'w-full sm:w-auto' : 'flex-1 sm:flex-initial'}>
+              {renderActionButton('lg', 'w-full sm:w-auto justify-center')}
+            </div>
+            {!isMovie && (
+              <ScrollToEpisodeButton
+                onClick={handleScrollToActiveEpisode}
+                disabled={!isFetchCompleted || !targetEpMeta}
+                title={`Go to S${activeSeasonNum}:E${activeEpisodeNum}`}
+              />
+            )}
           </div>
           {!isMovie && (
             <div className="text-xs sm:text-base font-bold text-zinc-300 truncate max-w-md sm:max-w-xl flex items-center gap-1.5 px-0.5">
@@ -807,6 +859,48 @@ export function MediaDetailView({
         )}
       </div>
     </motion.div>
+  );
+}
+
+interface ScrollToEpisodeButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+}
+
+function ScrollToEpisodeButton({
+  onClick,
+  disabled = false,
+  title,
+}: ScrollToEpisodeButtonProps) {
+  const { ref, isSpatialFocused } = useFocusable<HTMLButtonElement>({
+    id: 'detail-scroll-episode-btn',
+    zone: 'detail',
+    section: 'detail-hero-action',
+    index: 1,
+    priority: 0,
+    disabled,
+    onEnter: onClick,
+  });
+
+  return (
+    <motion.button
+      ref={ref}
+      id="detail-scroll-episode-btn"
+      type="button"
+      disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
+      whileTap={{ scale: disabled ? 1 : 0.96 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      onClick={onClick}
+      title={title || 'View active episode in list'}
+      aria-label={title || 'View active episode in list'}
+      className={`inline-flex items-center justify-center p-3 rounded-xl glass-panel bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 backdrop-blur-md transition-colors cursor-pointer select-none flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed spatial-focus-indicator ${
+        isSpatialFocused ? 'spatial-focus-active ring-2 ring-white/90 shadow-2xl bg-white/20 text-white' : ''
+      }`}
+    >
+      <ListVideo className="w-4 h-4" />
+    </motion.button>
   );
 }
 
