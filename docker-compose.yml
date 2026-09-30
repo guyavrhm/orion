@@ -11,8 +11,6 @@ services:
     container_name: orion-redis
     <<: *default-logging
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
 
@@ -28,10 +26,11 @@ services:
     environment:
       - REDIS_HOST=redis
       - NODE_ENV=production
+      - ORION_DATA_DIR=/data
     ports:
       - "3000:3000"
     volumes:
-      - orion_data:/root/.orion
+      - orion_data:/data
     depends_on:
       - redis
 

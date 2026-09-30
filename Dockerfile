@@ -44,12 +44,19 @@ COPY --chown=node:node --from=builder /app/dist ./dist
 # Copy static public assets with correct permissions
 COPY --chown=node:node public ./public
 
+# Create data directory and set permissions for node user
+RUN mkdir -p /data && chown -R node:node /data /app
+
+# Non-root user
+USER node
+
 # Expose port 3000 (default port for Orion backend)
 EXPOSE 3000
 
 # Set production environment variables
 ENV PORT=3000
 ENV NODE_ENV=production
+ENV ORION_DATA_DIR=/data
 
 # Start the all-in-one server and background workers
 CMD ["npm", "run", "start:all"]
