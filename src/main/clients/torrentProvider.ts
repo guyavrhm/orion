@@ -900,9 +900,9 @@ export class TorrentProviderClient {
       const bCodec = b.codec || 'other';
 
       // 1. Healthy H.264 Priority: If a stream is H.264 with >= 5 peers, favor it.
-      // If H.264 is already well-saturated (>= 30 peers), never yield to non-H.264 to prevent costly re-encodes.
-      // Only yield if H.264 has modest peers (< 30) AND the competitor has an overwhelming swarm (>= 50 AND >= 5x).
-      const SATURATED_H264_THRESHOLD = 30;
+      // If H.264 is already well-saturated (>= 50 peers), never yield to non-H.264 to prevent costly re-encodes.
+      // Only yield if H.264 has modest peers (< 50) AND the competitor has an overwhelming swarm (>= 50 AND >= 5x).
+      const SATURATED_H264_THRESHOLD = 50;
       const aIsHealthyH264 = aCodec === 'h264' && a.peers >= HEALTHY_THRESHOLD;
       const bIsHealthyH264 = bCodec === 'h264' && b.peers >= HEALTHY_THRESHOLD;
 

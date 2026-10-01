@@ -10,7 +10,6 @@ import {
   processDownloadJob,
   createDownloadWorker
 } from '../../../src/main/workers/downloadWorker.js';
-import { torrentProviderClient } from '../../../src/main/clients/torrentProvider.js';
 import { eviction } from '../../../src/main/utils/eviction.js';
 import * as hashUtil from '../../../src/main/utils/hash.js';
 import * as helpers from '../../../src/main/utils/helpers.js';
@@ -272,73 +271,6 @@ describe('downloadWorker', () => {
       } as unknown as Torrent;
 
       expect(() => cleanTorrentDir(mockTorrent, true)).not.toThrow();
-    });
-  });
-
-  describe('Candidate Ranking and Sorting Logic', () => {
-    it('prioritizes healthy H.264 streams over HEVC when peers are comparable', () => {
-      const streams = [
-        { hash: 'hevc_hash', quality: '1080p', codec: 'hevc' as const, peers: 20, sizeGB: 2.5, title: 'Movie 1080p HEVC', size: '2.5 GB' },
-        { hash: 'h264_hash', quality: '1080p', codec: 'h264' as const, peers: 15, sizeGB: 3.0, title: 'Movie 1080p x264', size: '3.0 GB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 2);
-      expect(ranked[0].hash).toBe('h264_hash');
-      expect(ranked[1].hash).toBe('hevc_hash');
-    });
-
-    it('yields H.264 preference to HEVC only if HEVC has overwhelming seeds (>= 50 peers and >= 5x)', () => {
-      const streams = [
-        { hash: 'h264_hash', quality: '1080p', codec: 'h264' as const, peers: 6, sizeGB: 3.0, title: 'Movie x264', size: '3.0 GB' },
-        { hash: 'hevc_swarmed', quality: '1080p', codec: 'hevc' as const, peers: 100, sizeGB: 2.0, title: 'Movie HEVC', size: '2.0 GB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 2);
-      expect(ranked[0].hash).toBe('hevc_swarmed');
-      expect(ranked[1].hash).toBe('h264_hash');
-    });
-
-    it('deprioritizes AV1 codec when competitors have healthy peers', () => {
-      const streams = [
-        { hash: 'av1_hash', quality: '1080p', codec: 'av1' as const, peers: 25, sizeGB: 1.5, title: 'Movie AV1', size: '1.5 GB' },
-        { hash: 'hevc_hash', quality: '1080p', codec: 'hevc' as const, peers: 10, sizeGB: 2.0, title: 'Movie HEVC', size: '2.0 GB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 2);
-      expect(ranked[0].hash).toBe('hevc_hash');
-      expect(ranked[1].hash).toBe('av1_hash');
-    });
-
-    it('falls back to 720p when 1080p has low seeds and 720p has healthy swarm', () => {
-      const streams = [
-        { hash: 'low_seed_1080', quality: '1080p', codec: 'h264' as const, peers: 2, sizeGB: 3.0, title: 'Low Seed 1080p', size: '3.0 GB' },
-        { hash: 'high_seed_720', quality: '720p', codec: 'h264' as const, peers: 30, sizeGB: 1.5, title: 'High Seed 720p', size: '1.5 GB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 2);
-      expect(ranked[0].hash).toBe('high_seed_720');
-      expect(ranked[1].hash).toBe('low_seed_1080');
-    });
-
-    it('falls back to SD / 480p when no 1080p or 720p streams exist', () => {
-      const streams = [
-        { hash: 'sd_hash_1', quality: '480p', codec: 'other' as const, peers: 10, sizeGB: 0.7, title: 'Vintage SD', size: '700 MB' },
-        { hash: 'sd_hash_2', quality: '480p', codec: 'other' as const, peers: 3, sizeGB: 0.8, title: 'Vintage SD 2', size: '800 MB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 2);
-      expect(ranked.length).toBe(2);
-      expect(ranked[0].hash).toBe('sd_hash_1');
-    });
-
-    it('deduplicates candidate streams with identical infoHashes', () => {
-      const streams = [
-        { hash: 'same_hash', quality: '1080p', codec: 'h264' as const, peers: 10, sizeGB: 2.0, title: 'Release A', size: '2.0 GB' },
-        { hash: 'same_hash', quality: '1080p', codec: 'h264' as const, peers: 10, sizeGB: 2.0, title: 'Release B', size: '2.0 GB' }
-      ];
-
-      const ranked = torrentProviderClient.filterAndRankTorrents(streams, 'movie', 5);
-      expect(ranked.length).toBe(1);
     });
   });
 

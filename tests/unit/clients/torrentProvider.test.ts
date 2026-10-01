@@ -491,7 +491,7 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(ranked[1].hash).toBe('hevc');
     });
 
-    it('should yield H264 to HEVC only when H264 has modest peers (< 30) and HEVC has overwhelming peers (>= 50 and >= 5x)', () => {
+    it('should yield H264 to HEVC only when H264 has modest peers (< 50) and HEVC has overwhelming peers (>= 50 and >= 5x)', () => {
       const streams = [
         { hash: 'hevc', title: 'Movie 1080p HEVC', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 80, codec: 'hevc' as const },
         { hash: 'h264', title: 'Movie 1080p H264', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 10, codec: 'h264' as const }
@@ -502,10 +502,21 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(ranked[1].hash).toBe('h264');
     });
 
-    it('should NOT yield H264 to HEVC when H264 is already saturated (>= 30 peers), even with massive HEVC swarm', () => {
+    it('should NOT yield H264 to HEVC when HEVC has < 50 peers, even if >= 5x', () => {
+      const streams = [
+        { hash: 'hevc-49', title: 'Movie 1080p HEVC', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 49, codec: 'hevc' as const },
+        { hash: 'h264-5', title: 'Movie 1080p H264', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 5, codec: 'h264' as const }
+      ];
+
+      const ranked = client.filterAndRankTorrents(streams, 'movie', 3);
+      expect(ranked[0].hash).toBe('h264-5');
+      expect(ranked[1].hash).toBe('hevc-49');
+    });
+
+    it('should NOT yield H264 to HEVC when H264 is already saturated (>= 50 peers), even with massive HEVC swarm', () => {
       const streams = [
         { hash: 'hevc-huge', title: 'Movie 1080p HEVC', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 10000, codec: 'hevc' as const },
-        { hash: 'h264-healthy', title: 'Movie 1080p H264', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 1500, codec: 'h264' as const }
+        { hash: 'h264-healthy', title: 'Movie 1080p H264', quality: '1080p', size: '2 GB', sizeGB: 2.0, peers: 60, codec: 'h264' as const }
       ];
 
       const ranked = client.filterAndRankTorrents(streams, 'movie', 3);
@@ -564,6 +575,27 @@ describe('TorrentProviderClient & Utilities', () => {
       const ranked = client.filterAndRankTorrents(streams, 'movie', 3);
       expect(ranked).toHaveLength(1);
       expect(ranked[0].hash).toBe('dvd');
+    });
+
+    it('should deprioritize AV1 codec when competitors have healthy peers', () => {
+      const streams = [
+        { hash: 'av1_hash', quality: '1080p', codec: 'av1' as const, peers: 25, sizeGB: 1.5, title: 'Movie AV1', size: '1.5 GB' },
+        { hash: 'hevc_hash', quality: '1080p', codec: 'hevc' as const, peers: 10, sizeGB: 2.0, title: 'Movie HEVC', size: '2.0 GB' }
+      ];
+
+      const ranked = client.filterAndRankTorrents(streams, 'movie', 2);
+      expect(ranked[0].hash).toBe('hevc_hash');
+      expect(ranked[1].hash).toBe('av1_hash');
+    });
+
+    it('should deduplicate candidate streams with identical infoHashes', () => {
+      const streams = [
+        { hash: 'same_hash', quality: '1080p', codec: 'h264' as const, peers: 10, sizeGB: 2.0, title: 'Release A', size: '2.0 GB' },
+        { hash: 'same_hash', quality: '1080p', codec: 'h264' as const, peers: 10, sizeGB: 2.0, title: 'Release B', size: '2.0 GB' }
+      ];
+
+      const ranked = client.filterAndRankTorrents(streams, 'movie', 5);
+      expect(ranked.length).toBe(1);
     });
   });
 
