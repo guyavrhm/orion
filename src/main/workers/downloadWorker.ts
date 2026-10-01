@@ -157,8 +157,8 @@ export function testCandidateStream(
             peakSpeedKB = currentSpeedKB;
           }
 
-          // Instant lock-in if candidate achieves >= 100 KB/s
-          if (currentSpeedKB >= DOWNLOAD_WATCHDOG.STALL_SPEED_KB) {
+          // Instant lock-in if candidate achieves >= TOURNAMENT_LOCKIN_SPEED_KB
+          if (currentSpeedKB >= DOWNLOAD_WATCHDOG.TOURNAMENT_LOCKIN_SPEED_KB) {
             logger.info(`Candidate ${candidate.hash} achieved healthy speed ${currentSpeedKB.toFixed(1)} KB/s in ${activeDownloadSec}s! Locking in.`);
             finish(true);
             return;

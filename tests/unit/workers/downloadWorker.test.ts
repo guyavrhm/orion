@@ -66,7 +66,7 @@ vi.mock('webtorrent', () => {
     name = 'Movie.1080p';
     path = '/tmp/downloads';
     ready = true;
-    downloadSpeed = 250 * 1024; // 250 KB/s (healthy)
+    downloadSpeed = 600 * 1024; // 600 KB/s (healthy, exceeds 500 KB/s)
     downloaded = 2048000;
     progress = 1;
     numPeers = 30;
@@ -343,7 +343,7 @@ describe('downloadWorker', () => {
   });
 
   describe('testCandidateStream', () => {
-    it('immediately locks in candidate if download speed exceeds STALL_SPEED_KB (100 KB/s)', async () => {
+    it('immediately locks in candidate if download speed exceeds TOURNAMENT_LOCKIN_SPEED_KB (500 KB/s)', async () => {
       vi.useFakeTimers();
 
       const candidate = {
@@ -356,17 +356,17 @@ describe('downloadWorker', () => {
 
       const testPromise = testCandidateStream(candidate, '/tmp/target');
 
-      // Advance timer by 1.1s so poll ticks with default healthy downloadSpeed (250 KB/s)
+      // Advance timer by 1.1s so poll ticks with default healthy downloadSpeed (600 KB/s)
       await vi.advanceTimersByTimeAsync(1100);
       const result = await testPromise;
 
       expect(result.candidate.hash).toBe('test_hash_123');
       expect(result.isHealthy).toBe(true);
-      expect(result.peakSpeedKB).toBeGreaterThanOrEqual(100);
+      expect(result.peakSpeedKB).toBeGreaterThanOrEqual(500);
       vi.useRealTimers();
     });
 
-    it('records peak speed and finishes with isHealthy: false after 15s active if speed < 100 KB/s', async () => {
+    it('records peak speed and finishes with isHealthy: false after 15s active if speed < 500 KB/s', async () => {
       vi.useFakeTimers();
 
       class SlowTorrent extends EventEmitter {

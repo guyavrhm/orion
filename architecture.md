@@ -128,7 +128,7 @@ sequenceDiagram
 #### Pipeline Safety & Processing Policies
 
 * **Stream Discovery & Download**:
-  * **Tournament Discovery**: Probes candidates sequentially; first to hit 100 KB/s locks in, otherwise fastest wins.
+  * **Tournament Discovery**: Probes candidates sequentially; first to hit 500 KB/s locks in, otherwise fastest wins.
   * **Dead Stream Failover**: 0 new bytes for 20 min (or torrent error) → wipes candidate temp directory and triggers a fresh tournament across remaining unfailed candidates at elevated `HIGH` priority; all exhausted → job failed.
   * **Stall Rescheduling**: <100 KB/s for 30s → yields to fresh (`NORMAL`) or recovering (`HIGH`) queue items by demoting to `LOW` priority, preserving downloaded pieces.
   * **Progress Throttling**: Polls metrics every 2s, broadcasts only on integer percentage change.
