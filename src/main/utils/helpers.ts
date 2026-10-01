@@ -46,7 +46,7 @@ export function parseFileId(fileId: string): ParsedFileId | null {
   }
 
   // Check for standard canonical format: {id}_s{season}_e{episode}
-  const match = fileId.match(/^([a-zA-Z0-9_-]+)_s(\d+)_e(\d+)$/);
+  const match = fileId.match(/^([a-zA-Z0-9_-]+)_s(\d+)_e(\d+)$/i);
   if (match) {
     return {
       type: 'show',

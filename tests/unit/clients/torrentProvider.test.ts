@@ -150,6 +150,8 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parseSizeToGB('700 MB').sizeGB).toBeCloseTo(700 / 1024, 2);
       expect(client.parseSizeToGB('2.5 TB').sizeGB).toBeCloseTo(2560, 1);
       expect(client.parseSizeToGB('1.2 GiB').sizeGB).toBeCloseTo(1.2, 2);
+      expect(client.parseSizeToGB('1,45 GB').sizeGB).toBeCloseTo(1.45, 2);
+      expect(client.parseSizeToGB('750,5 MB').sizeGB).toBeCloseTo(750.5 / 1024, 2);
       expect(client.parseSizeToGB('1048576 B').sizeGB).toBeCloseTo(1 / 1024, 3);
     });
 
@@ -157,6 +159,9 @@ describe('TorrentProviderClient & Utilities', () => {
       const res = client.parseSizeToGB(undefined, 'Movie Title (2022) 1080p BluRay 💾 3.25 GB [x264]');
       expect(res.sizeGB).toBeCloseTo(3.25, 2);
       expect(res.sizeStr).toBe('3.25 GB');
+
+      const resComma = client.parseSizeToGB(undefined, 'Movie Title (2022) 1080p BluRay 💾 3,25 GB [x264]');
+      expect(resComma.sizeGB).toBeCloseTo(3.25, 2);
     });
 
     it('should return zeros for unparseable or empty values', () => {
@@ -174,9 +179,13 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parsePeers({ s: 15 })).toBe(15);
     });
 
-    it('should extract peers from text patterns (emoji, Seeds: N, [S/L], suffix)', () => {
+    it('should extract peers from text patterns (emoji, arrows, Seeds: N, [S/L], suffix)', () => {
       expect(client.parsePeers({}, 'Nosferatu 👤 240 peers')).toBe(240);
       expect(client.parsePeers({}, 'Release Title Seeds: 150 Leechers: 20')).toBe(150);
+      expect(client.parsePeers({}, 'Release Title Seeds 150')).toBe(150);
+      expect(client.parsePeers({}, 'Release Title Seeders - 90')).toBe(90);
+      expect(client.parsePeers({}, 'Show S01E01 ↑ 180 / ↓ 20')).toBe(180);
+      expect(client.parsePeers({}, 'Show S01E01 ▲ 210')).toBe(210);
       expect(client.parsePeers({}, 'Show S01E01 [85/12]')).toBe(85);
       expect(client.parsePeers({}, 'Movie 1080p (95|10)')).toBe(95);
       expect(client.parsePeers({}, 'Night of the Living Dead 350 seeders')).toBe(350);
@@ -196,6 +205,7 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parseQuality({}, 'Plan 9 from Outer Space UHD 3840x2160')).toBe('2160p');
       expect(client.parseQuality({ title: 'Movie 2160i Ultra HD' })).toBe('2160p');
       expect(client.parseQuality({ quality: '2160' })).toBe('2160p');
+      expect(client.parseQuality({ title: 'Nature 2160p60 HDR' })).toBe('2160p');
     });
 
     it('should detect 1080p / FHD resolutions', () => {
@@ -203,12 +213,15 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parseQuality({ res: '1080' })).toBe('1080p');
       expect(client.parseQuality({}, 'Metropolis Full HD 1920x1080')).toBe('1080p');
       expect(client.parseQuality({ title: 'The Beverly Hillbillies 1080i HDTV' })).toBe('1080p');
+      expect(client.parseQuality({ title: 'Documentary 1080p60 BluRay' })).toBe('1080p');
+      expect(client.parseQuality({ title: 'Sports Event 1080p50 HDTV' })).toBe('1080p');
     });
 
     it('should detect 720p / HD resolutions', () => {
       expect(client.parseQuality({ videoquality: '720p' })).toBe('720p');
       expect(client.parseQuality({ resolution: '720' })).toBe('720p');
       expect(client.parseQuality({}, 'Flash Gordon Conquers the Universe 1280x720 HD')).toBe('720p');
+      expect(client.parseQuality({ title: 'Concert 720p60 Web' })).toBe('720p');
     });
 
     it('should detect 480p / SD resolutions', () => {
@@ -235,6 +248,13 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parseCodec({ format: 'HEVC' })).toBe('hevc');
       expect(client.parseCodec({}, 'Movie 2160p 10-bit H.265 DDP5.1')).toBe('hevc');
       expect(client.parseCodec({ title: 'Show S01E01 720p Hi10P' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Movie 2160p HDR H 265-playWEB' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Movie 1080p 10 bit' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Show S01E01 1080p Main10 WEBRip' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Show S01E01 1080p Main 10 WEBRip' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Movie 1080p HDR10+ BluRay' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Movie 1080p x.265 AAC' })).toBe('hevc');
+      expect(client.parseCodec({ title: 'Movie 1080p x-265 AAC' })).toBe('hevc');
     });
 
     it('should detect H264 codec', () => {
@@ -242,6 +262,10 @@ describe('TorrentProviderClient & Utilities', () => {
       expect(client.parseCodec({ title: 'Movie 1080p x264 AAC' })).toBe('h264');
       expect(client.parseCodec({}, 'Show 720p AVC1.640028')).toBe('h264');
       expect(client.parseCodec({ title: 'Movie H.264 Bluray' })).toBe('h264');
+      expect(client.parseCodec({ title: 'Show S01E02 1080p H 264-FLUX' })).toBe('h264');
+      expect(client.parseCodec({ title: 'Show S01E02 1080p H-264-FLUX' })).toBe('h264');
+      expect(client.parseCodec({ title: 'Show S01E02 1080p x.264-FLUX' })).toBe('h264');
+      expect(client.parseCodec({ title: 'Show S01E02 1080p x-264-FLUX' })).toBe('h264');
     });
 
     it('should detect codec from nested nested.filename', () => {
@@ -487,6 +511,38 @@ describe('TorrentProviderClient & Utilities', () => {
       const ranked = client.filterAndRankTorrents(streams, 'movie', 3);
       expect(ranked[0].hash).toBe('h264-healthy');
       expect(ranked[1].hash).toBe('hevc-huge');
+    });
+
+    it('should enforce 4GB limit for show 1080p episodes and 12GB for movies', () => {
+      const showStreams = [
+        { hash: 'show-remux', title: 'Show 1080p Remux', quality: '1080p', size: '5.5 GB', sizeGB: 5.5, peers: 100, codec: 'h264' as const }, // Above 4GB -> dropped
+        { hash: 'show-valid', title: 'Show 1080p Valid', quality: '1080p', size: '3.5 GB', sizeGB: 3.5, peers: 50, codec: 'h264' as const } // Under 4GB -> kept
+      ];
+
+      const rankedShow = client.filterAndRankTorrents(showStreams, 'show', 3);
+      expect(rankedShow).toHaveLength(1);
+      expect(rankedShow[0].hash).toBe('show-valid');
+
+      const movieStreams = [
+        { hash: 'movie-epic', title: 'Movie 1080p 3h Epic', quality: '1080p', size: '10.5 GB', sizeGB: 10.5, peers: 80, codec: 'h264' as const }, // Under 12GB -> kept
+        { hash: 'movie-remux', title: 'Movie 1080p Remux', quality: '1080p', size: '25.0 GB', sizeGB: 25.0, peers: 500, codec: 'h264' as const } // Above 12GB -> dropped
+      ];
+
+      const rankedMovie = client.filterAndRankTorrents(movieStreams, 'movie', 3);
+      expect(rankedMovie).toHaveLength(1);
+      expect(rankedMovie[0].hash).toBe('movie-epic');
+    });
+
+    it('should prefer well-seeded 10GB stream over fragile 8GB stream within the 12GB limit', () => {
+      const streams = [
+        { hash: 'fragile', title: 'Movie 1080p Small', quality: '1080p', size: '8.0 GB', sizeGB: 8.0, peers: 5, codec: 'h264' as const },
+        { hash: 'massive', title: 'Movie 1080p Large', quality: '1080p', size: '10.0 GB', sizeGB: 10.0, peers: 5000, codec: 'h264' as const }
+      ];
+
+      const ranked = client.filterAndRankTorrents(streams, 'movie', 3);
+      expect(ranked).toHaveLength(2);
+      expect(ranked[0].hash).toBe('massive');
+      expect(ranked[1].hash).toBe('fragile');
     });
 
     it('should fallback to higher seeded 720p if 1080p has low seeders (< 5)', () => {

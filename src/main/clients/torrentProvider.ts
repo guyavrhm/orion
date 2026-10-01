@@ -179,10 +179,10 @@ export class TorrentProviderClient {
     for (const text of candidates) {
       if (!text) continue;
 
-      // Match standard size pattern: 1.45 GB, 700 MB, 1.2 GiB, 450000000 B
-      const match = text.match(/\b([\d.]+)\s*(TIB|TB|GIB|GB|MIB|MB|KIB|KB|BYTES|B)\b/i);
+      // Match standard size pattern: 1.45 GB, 1,45 GB, 700 MB, 1.2 GiB, 450000000 B
+      const match = text.match(/\b(\d+(?:[.,]\d+)?)\s*(TIB|TB|GIB|GB|MIB|MB|KIB|KB|BYTES|B)\b/i);
       if (match) {
-        const val = parseFloat(match[1]);
+        const val = parseFloat(match[1].replace(',', '.'));
         const unit = match[2].toUpperCase();
         return this._calcUnitToGB(val, unit);
       }
@@ -240,8 +240,14 @@ export class TorrentProviderClient {
       const emojiMatch = text.match(/👤\s*(\d+)/);
       if (emojiMatch) return parseInt(emojiMatch[1], 10);
 
-      // Match Seeds: 150 or S: 150
-      const seedMatch = text.match(/\b(?:seeds?|seeders?|s):\s*(\d+)\b/i);
+      // Match arrow style: ↑ 150 or ▲ 150
+      const arrowMatch = text.match(/[↑▲]\s*(\d+)/);
+      if (arrowMatch) return parseInt(arrowMatch[1], 10);
+
+      // Match Seeds: 150, Seeders 150, Seeds - 150, or S: 150
+      const seedMatch =
+        text.match(/\b(?:seeds?|seeders?)(?:[:\s-]+|\s*)(\d+)\b/i) ||
+        text.match(/\bs:\s*(\d+)\b/i);
       if (seedMatch) return parseInt(seedMatch[1], 10);
 
       // Match ratio style: [150/20] or (150/20)
@@ -304,17 +310,17 @@ export class TorrentProviderClient {
     }
 
     // 2. 4K / 2160p patterns (e.g. 2160p, 4K, UHD, 3840x2160)
-    if (/\b(2160p|2160i|4k|uhd|ultra[ ._-]?hd|3840\s*[x*×]\s*2160)\b/i.test(clean)) {
+    if (/\b(2160[pi](?:50|60|120)?|4k(?:50|60|120)?|uhd|ultra[ ._-]?hd|3840\s*[x*×]\s*2160)\b/i.test(clean)) {
       return '2160p';
     }
 
     // 3. 1080p / FHD patterns (e.g. 1080p, 1080i, FHD, 1920x1080)
-    if (/\b(1080p|1080i|fhd|full[ ._-]?hd|1920\s*[x*×]\s*1080)\b/i.test(clean)) {
+    if (/\b(1080[pi](?:50|60|120)?|fhd|full[ ._-]?hd|1920\s*[x*×]\s*1080)\b/i.test(clean)) {
       return '1080p';
     }
 
     // 4. 720p / HD patterns (e.g. 720p, 720i, 1280x720)
-    if (/\b(720p|720i|1280\s*[x*×]\s*720)\b/i.test(clean)) {
+    if (/\b(720[pi](?:50|60|120)?|1280\s*[x*×]\s*720)\b/i.test(clean)) {
       return '720p';
     }
 
@@ -323,8 +329,8 @@ export class TorrentProviderClient {
       return '720p';
     }
 
-    // 6. Generic pixel height tag match: e.g. "1080p", "720p", "480p", "1080i"
-    const pMatch = clean.match(/\b(\d{3,4})[pi]\b/i);
+    // 6. Generic pixel height tag match: e.g. "1080p", "720p", "480p", "1080i", "1080p60"
+    const pMatch = clean.match(/\b(\d{3,4})[pi](?:50|60|120)?\b/i);
     if (pMatch) {
       const height = parseInt(pMatch[1], 10);
       if (height >= 2000) return '2160p';
@@ -380,10 +386,10 @@ export class TorrentProviderClient {
     if (/\b(av1|av01)\b/i.test(combined)) {
       return 'av1';
     }
-    if (/\b(x265|hevc|h265|h\.265|10bit|10-bit|hi10p)\b/i.test(combined)) {
+    if (/\b(hevc|[hx][\s._-]?265|10[\s._-]?bit|main[\s._-]?10|hdr10(?:\+)?|hi10p)\b/i.test(combined)) {
       return 'hevc';
     }
-    if (/\b(x264|h264|h\.264|avc|avc1)\b/i.test(combined)) {
+    if (/\b([hx][\s._-]?264|avc|avc1)\b/i.test(combined)) {
       return 'h264';
     }
 
@@ -860,8 +866,8 @@ export class TorrentProviderClient {
    */
   filterAndRankTorrents(streams: StreamInfo[], type: MediaType = 'movie', count = 3): StreamInfo[] {
     const isMovie = type === 'movie';
-    const limit1080 = isMovie ? 12.0 : 3.0;
-    const limit720 = isMovie ? 6.0 : 1.5;
+    const limit1080 = isMovie ? 12.0 : 4.0;
+    const limit720 = isMovie ? 6.0 : 2.0;
     const limitSD = isMovie ? 4.0 : 1.0;
 
     // 1. First attempt: filter for high definition (1080p / 720p)

@@ -63,6 +63,16 @@ describe('utils/helpers', () => {
       });
     });
 
+    it('should correctly parse uppercase season and episode format (_SX_EY)', () => {
+      const result = parseFileId('tt0944947_S2_E4');
+      expect(result).toEqual({
+        type: 'show',
+        id: 'tt0944947',
+        season: '2',
+        episode: '4'
+      });
+    });
+
     it('should reject path traversal attempts and return null', () => {
       expect(parseFileId('../../etc/passwd')).toBeNull();
       expect(parseFileId('../secrets')).toBeNull();
