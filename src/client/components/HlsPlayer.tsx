@@ -578,14 +578,14 @@ export function HlsPlayer({
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        enableWorker: false,
+        enableWorker: true,
         lowLatencyMode: false,
-        backBufferLength: 5,
+        backBufferLength: 15,
         maxBufferLength: 30,
         maxMaxBufferLength: 45,
-        maxBufferSize: 30 * 1024 * 1024,
-        maxBufferHole: 0.2,
-        highBufferWatchdogPeriod: 1,
+        maxBufferSize: 40 * 1024 * 1024,
+        maxBufferHole: 0.5,
+        highBufferWatchdogPeriod: 2,
         nudgeOffset: 0.1,
         nudgeMaxRetry: 5,
         fragLoadingTimeOut: 20000,
