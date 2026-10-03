@@ -1,6 +1,6 @@
 {
   "name": "orion",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Orion Media Streamer (PWA & Home Server)",
   "license": "MIT",
   "type": "module",
